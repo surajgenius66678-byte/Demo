@@ -1,0 +1,216 @@
+# SatQuery AI — Part 5: Evidence Validation, Confidence & Response Generation
+
+>  **Merge note:** dependencies for the whole repo are consolidated at the root — run `pip install -r requirements.txt` from `satquery-ai/`, not a local one in this folder (this part no longer ships its own).
+
+Built against `architecture.md` Section 3.5 (spec) and Section 4 (shared
+schemas). This is a complete, tested implementation of Part 5's contract:
+
+```python
+def validate_and_respond(query: str, evidence: Evidence) -> FinalResponse: ...
+```
+
+`Evidence` in, `FinalResponse` out — the step where hallucination gets
+prevented, per the doc's non-negotiable "evidence-first" principle.
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+pytest -q
+```
+
+No pytest available (e.g. an offline judging box)? `pydantic` is the only
+real dependency — everything else is standard library:
+
+```bash
+pip install pydantic
+python run_tests.py
+```
+
+Both run the same 26 tests. Nothing in this part needs a GPU, and by
+default nothing needs a live model either (see "Two ways to run it" below)
+— matching the doc's "Mocking strategy: none needed inward" note for Part 5.
+
+## File map
+
+```
+backend/shared/schemas.py     Section 4, copied verbatim
+backend/evidence/
+  service.py                  the public entry point — validate_and_respond()
+  validator.py                the abstain gate (runs before any LLM call)
+  confidence.py                deterministic confidence scoring
+  grounding.py                  Evidence -> {token} placeholders + allow-set of real numbers
+  templates.py                 per-TaskType, non-LLM sentence templates (the safe fallback)
+  claim_check.py                 verifies every number in generated text is grounded
+  generator.py                  orchestrates: prompt -> fill -> check -> retry -> fallback
+  llm_client.py                  pluggable LLM client (local-only, no cloud API)
+  config.py                      every tunable threshold, in one place
+tests/evidence/                  fixtures + unit tests + the end-to-end definition-of-done test
+run_tests.py                     zero-dependency test runner (fallback for no-pytest environments)
+```
+
+## Two ways to run it
+
+**Without any LLM (default).** Call `validate_and_respond(query, evidence)`
+with no third argument. Explanations come entirely from `templates.py` —
+deterministic, instant, and safe by construction, since every `{token}` it
+fills in is already a real number from `Evidence`.
+
+**With a local LLM, for more natural prose.** Pass a client:
+
+```python
+from backend.evidence import validate_and_respond
+from backend.evidence.llm_client import LocalOpenAICompatibleLLMClient
+
+client = LocalOpenAICompatibleLLMClient(model="llama3.1")  # e.g. Ollama on localhost
+response = validate_and_respond(query, evidence, llm_client=client)
+```
+
+`LocalOpenAICompatibleLLMClient` talks to a locally-hosted, OpenAI-chat-
+compatible server (Ollama, vLLM, llama.cpp server) — never a cloud API, per
+Section 1's "no live external API dependency at request time" rule. If it's
+unreachable or errors for any reason, `generator.py` catches it and falls
+back to the template path automatically — a network hiccup degrades the
+prose, it never crashes the response.
+
+## How the numeric-safety guarantee works
+
+This is the part of the spec worth understanding end to end, since it's
+where most of the design effort went:
+
+1. **`grounding.py`** reads every numeric field out of `Evidence` once —
+   `stats`, `change_map`, `detections[*].score`, `confidence.value`, and
+   even numbers the upstream model already stated in `vqa_answer_raw` — and
+   turns them into named `{token}` placeholders plus a flat allow-set of
+   real values.
+2. If an LLM is in use, **`generator.py`** hands it only those placeholder
+   names and explicitly forbids it from typing a digit itself. The model's
+   output is filled in via `str.format_map`, so a real number only ever
+   enters `answer_text` by substitution, never by generation.
+3. **`claim_check.py`** re-scans the filled text for anything number-shaped
+   and confirms each one matches an allowed value (with rounding/format
+   tolerance — "about 12%" for a true 12.4 is fine; "87%" is not). This is
+   the backstop for an LLM that ignores the placeholder instruction.
+4. On a claim-check failure, `generator.py` retries once with a stricter
+   prompt naming the exact number that leaked. If it fails again, it drops
+   straight to `templates.py` — plain Python string formatting, which
+   cannot contain an ungrounded number.
+5. **`service.py`** re-runs the claim-check one more time on whatever
+   `generate_explanation` returned, as a final check at the outermost
+   boundary, before anything becomes `FinalResponse.answer_text`.
+
+## Hardening checklist (from Section 3.5), mapped to code
+
+| Requirement | Where |
+|---|---|
+| Numbers are string-templated, never freely generated by the LLM | `grounding.py` (extraction) + `generator.py` (placeholder-only prompt) |
+| Post-generation check confirms every number matches evidence; regenerate or fall back on mismatch | `claim_check.py` + `generator.py`'s retry loop + `templates.py` fallback |
+| `confidence.value` traces only to `evidence.confidence` or a deterministic function of detection/change-map scores | `confidence.py` — no LLM call anywhere in this file |
+| Empty, weak, or co-registration-refused evidence sets `abstained: true` with a plain-language reason | `validator.py` |
+
+## Abstain rules, precisely
+
+`validator.py` abstains, in this order, on: `task == UNSUPPORTED`; a
+warning containing "coregistration" (case-insensitive); evidence where
+every optional signal (`detections`, `change_map`, `vqa_answer_raw`,
+`stats`) is empty; or a calibrated `confidence.value` below
+`WEAK_EVIDENCE_FLOOR` (0.25) with no stronger independent signal to lean
+on. An empty `detections` list alongside a populated `vqa_answer_raw` is
+treated as a legitimate "looked and found nothing" answer, not empty
+evidence — see `test_zero_detections_with_raw_answer_is_not_treated_as_empty`.
+
+All thresholds live in `config.py` — that's the one file to edit to retune
+behavior.
+
+## Known limitation
+
+`claim_check.py`'s number extraction is a regex heuristic, not a full
+parser. An alphanumeric identifier like "Sentinel-2" could in principle be
+misread as the number 2 and, if 2 isn't otherwise grounded, trigger an
+unnecessary fallback to the templated sentence. That failure mode trades a
+slightly duller answer for never risking an ungrounded number reaching the
+user, which is the right direction to fail in an evidence-first system —
+documented in `claim_check.py`'s module docstring rather than engineered
+away, per Section 1's "don't overengineer" principle. The generator's
+system prompt also asks the LLM not to mention model/product names, which
+avoids this in practice.
+
+## Bugs found and fixed in review
+
+A follow-up audit (with actual sandbox execution, not just reading the code)
+found and fixed 5 real issues, each with a regression test now in the suite:
+
+1. **Number regex misread hyphenated ranges/dates as negative numbers.**
+   `"64-91%"` extracted as `[64.0, -91.0]` — the range's own hyphen got read
+   as a minus sign, so an ordinary "X-Y%" sentence could fail the
+   claim-check even with both ends genuinely grounded. Fixed with a
+   negative lookbehind in `grounding._NUMBER_RE` so a `-` only counts as a
+   sign when it isn't glued to a preceding digit/letter/dot; real negative
+   numbers ("-12.5 meters") still extract correctly.
+2. **`detection_mean_score` was offered as a token but never grounded.**
+   The average of detection scores was computed and listed as a valid
+   `{token}`, but the mean value itself was never added to
+   `allowed_values` — only the individual scores were. Using the mean
+   correctly could still fail the claim-check whenever the average wasn't
+   coincidentally close to one specific score. Fixed in `grounding.py`.
+3. **Colliding stats keys silently dropped a token.** `"flood-area-km2"`
+   and `"flood_area_km2"` both sanitize to the same token name; the second
+   used to overwrite the first in `ctx.tokens`. Fixed with `_dedupe_token`,
+   which suffixes instead of clobbering.
+4. **A malformed LLM format string wasted the retry budget.** If the LLM
+   used a format spec (`{token:.1f}`) or a positional field (`{0}`, `{}`),
+   `str.format_map` raises — this was caught by the same broad `except` as
+   "client unavailable" and gave up immediately instead of using the
+   configured retry. Fixed in `generator.py`: client failures and
+   format-string mistakes are now handled separately, and a format mistake
+   gets a specific, correcting retry prompt.
+5. **Warning text wasn't scanned for numbers.** A non-coregistration
+   warning like `"batch size reduced from 32 to 8"` gets appended to every
+   answer via `templates.warnings_suffix`, but `grounding.py` never scanned
+   `evidence.warnings` for numbers — so `service.py`'s outer safety-net
+   check could see those numbers as "unverified" and silently discard an
+   otherwise-good LLM answer in favor of the generic template. Fixed by
+   scanning warnings the same way `vqa_answer_raw` already was.
+
+Also improved for phrasing quality (not a correctness bug, but found in the
+same pass): the `GROUNDING` template said "Found 1 match(es)... ranging
+from 91% to 91%" for a single detection. `grounding.py` now precomputes
+`detection_count_phrase` and `detection_confidence_phrase` with correct
+singular/plural and single-value handling.
+
+**What I checked and did *not* change:** the number-extraction regex is
+still a heuristic (see `claim_check.py`'s docstring) — an identifier like
+"Sentinel-2" can still be misread as a number; this is a deliberate,
+documented trade-off, not an oversight. `LocalOpenAICompatibleLLMClient`'s
+exception handling was verified against this project's own sandboxed,
+network-disabled environment (confirmed it correctly wraps a real
+connection failure into `LLMUnavailableError`). One caveat: I verified
+correctness by executing the actual test suite against a minimal
+pydantic-compatible shim and a zero-dependency runner (no network access
+here to `pip install` the real thing) — I'd still recommend running
+`pytest` for real once you have it installed, as a final check.
+
+## Extending
+
+New `TaskType`? Add a template string to `_TEMPLATES` in `templates.py`
+using whichever `{token}` names `grounding.py` already produces (or extend
+`build_grounding_context` if the new task needs a field it doesn't yet
+read). No other file needs to change.
+
+## Dropping this into the full repo
+
+Per Section 8, this maps onto the monorepo as-is:
+
+```
+satquery-ai/
+├── backend/
+│   ├── evidence/     <- backend/evidence/ from this zip
+│   └── shared/
+│       └── schemas.py   <- backend/shared/schemas.py from this zip (verbatim, don't redefine elsewhere)
+└── tests/
+    └── evidence/     <- tests/evidence/ from this zip (or wherever the repo's test convention puts them)
+```
+
+`backend/evidence/__init__.py` re-exports `validate_and_respond`, so Part 2
+can do either `from backend.evidence import validate_and_respond` or
+`from backend.evidence.service import validate_and_respond`.

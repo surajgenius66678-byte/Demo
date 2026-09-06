@@ -1,0 +1,44 @@
+# Reference registry config — Section 3.4's "config-driven list of
+# ModelRegistryEntry." These are PLACEHOLDER entries: which base VLM,
+# grounding model, change-detection architecture, and fusion approach
+# actually get used is one of Part 6's open decisions (Section 3.6) and
+# hasn't been resolved yet. Once Part 6 delivers real checkpoints, update
+# checkpoint_path (and quantization, if the eval numbers call for it) —
+# nothing else in Part 4 needs to change.
+
+models:
+  - name: satquery-vlm-base
+    version: "0.1.0"
+    tasks: [SINGLE_IMAGE_VQA, CAPTIONING]
+    modalities: [OPTICAL, SAR]
+    checkpoint_path: checkpoints/vlm/satquery-vlm-base
+    quantization: "4bit"
+    requires_coregistration: false
+    max_input_px: 1024
+
+  - name: satquery-grounding
+    version: "0.1.0"
+    tasks: [GROUNDING]
+    modalities: [OPTICAL, SAR]
+    checkpoint_path: checkpoints/grounding/satquery-grounding
+    quantization: "none"
+    requires_coregistration: false
+    max_input_px: 1024
+
+  - name: satquery-change-bitemporal
+    version: "0.1.0"
+    tasks: [CHANGE_DETECTION, CHANGE_VQA]
+    modalities: [OPTICAL]
+    checkpoint_path: checkpoints/change/satquery-change-bitemporal
+    quantization: "8bit"
+    requires_coregistration: true
+    max_input_px: 1024
+
+  - name: satquery-fusion
+    version: "0.1.0"
+    tasks: [OPTICAL_SAR_FUSION]
+    modalities: [OPTICAL, SAR]
+    checkpoint_path: checkpoints/fusion/satquery-fusion
+    quantization: "8bit"
+    requires_coregistration: true
+    max_input_px: 1024

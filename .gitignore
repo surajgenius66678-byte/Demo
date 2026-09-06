@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+
+# Local model and training artifacts
+training/data/raw/
+training/data/processed/
+training/data/splits/
+training/runs/
+
+# Generated caches and editor files
+.pytest_cache/
+.mypy_cache/
+.vscode/

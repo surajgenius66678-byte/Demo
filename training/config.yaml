@@ -1,0 +1,111 @@
+# training/config.yaml — default / ~12GB-VRAM tier
+# (RTX 3060 12GB, RTX 4070, T4 16GB, RTX 2080 Ti 11GB, or similar.)
+#
+# Two other ready-made profiles, same pipeline, only the VRAM-driven knobs
+# (batch size, quantization, gradient checkpointing, optimizer) differ —
+# training dynamics (effective batch size 16, LoRA rank 8, epochs, LR) are
+# kept identical across all three on purpose, so results are comparable and
+# only wall-clock time changes:
+#   config.laptop-6gb.yaml   6-8GB laptop GPUs (RTX 3050 6GB, RTX 2060 6GB, ...)
+#   config.a100.yaml         24GB+ (RTX 3090/4090, A100 40/80GB, H100, ...)
+# Run with: python train.py --config config.<name>.yaml (or via run_pipeline.sh)
+#
+# Single source of truth for Part 6's pipeline. prepare_dataset.py, splits.py,
+# train.py, evaluate.py, and export_checkpoint.py all read this file — nothing
+# they do should be hardcoded again in the scripts themselves.
+#
+# Fields marked "OPEN DECISION" are the ones architecture.md Section 3.6 flags
+# as not yet resolved (base VLM, dataset, LoRA vs QLoRA), and says should get
+# "a dedicated research pass" (candidate comparison, licensing check, benchmark
+# evidence) before Part 6 starts for real. The values below are a working
+# starting point chosen so the pipeline runs end-to-end today — not the
+# outcome of that research pass. Swap them freely; nothing else in this repo
+# needs to change when you do.
+
+# ---------------------------------------------------------------------------
+# Base model                                                    OPEN DECISION
+# ---------------------------------------------------------------------------
+# google/paligemma-3b-pt-224 as the starting default because:
+#   - it natively outputs bounding-box location tokens as text, which maps
+#     onto Part 4's Detection schema without a custom decode head
+#   - Google has already published google/paligemma-3b-ft-rsvqa-hr-224-jax —
+#     a checkpoint fine-tuned on RSVQA-HR — so the domain transfer is validated
+#   - LoRA/QLoRA fine-tuning via transformers + peft is well documented
+# Reasonable alternatives to weigh in the actual research pass:
+#   - google/paligemma2-3b-pt-224   newer generation, same fine-tuning recipe
+#   - Qwen/Qwen2-VL-2B-Instruct     stronger free-form VQA; grounding format
+#                                    differs from PaliGemma's <loc> tokens, so
+#                                    Part 4's adapter would need to change too
+#   - llava-hf/llava-1.5-7b-hf      larger, weaker out-of-the-box grounding
+model:
+  base_model: "google/paligemma-3b-pt-224"
+  processor: "google/paligemma-3b-pt-224"   # usually the same id as base_model
+
+# ---------------------------------------------------------------------------
+# Dataset                                                        OPEN DECISION
+# ---------------------------------------------------------------------------
+# RSVQA-LR (Lobry et al., 2020) as the starting default: small enough to
+# iterate on hackathon hardware/timeline, the canonical remote-sensing VQA
+# benchmark, and LoRA fine-tuning on it is validated in the literature
+# (RS-LLaVA reports ~87% exact-match accuracy with a LoRA fine-tune).
+# Authoritative source + citation: https://rsvqa.sylvainlobry.com/
+#
+# `hf_dataset_id` points at a community re-upload so a first run needs no
+# manual download step. It is NOT the authoritative source — spot-check it's
+# complete/current before trusting numbers for an actual submission. To use
+# the original files instead: download from the link above, set `local_path`
+# below, and see from_local()'s docstring in prepare_dataset.py for the
+# manifest shape it expects.
+dataset:
+  name: "rsvqa-lr"                     # copied verbatim into checkpoint_metadata.json
+  hf_dataset_id: "exibings/rsvqa-lr"   # community mirror — see note above
+  local_path: null                      # set to a folder path to use local_path instead
+  # Column names on the loaded HF dataset (or keys in the local records.json).
+  # If loading fails with a "column not found" error, prepare_dataset.py prints
+  # the columns it actually found — fix these three lines to match and rerun.
+  column_mapping:
+    image: "image"
+    question: "question"
+    answer: "answer"
+
+# ---------------------------------------------------------------------------
+# Train / val / test split
+# ---------------------------------------------------------------------------
+split:
+  train_pct: 0.8
+  val_pct: 0.1
+  test_pct: 0.1
+  seed: 42   # fixed seed -> reproducible split -> test set stays genuinely held-out
+
+# ---------------------------------------------------------------------------
+# LoRA / QLoRA                                                   OPEN DECISION
+# ---------------------------------------------------------------------------
+adapter:
+  type: "QLoRA"   # "LoRA" | "QLoRA" — must exactly match checkpoint_metadata.json's enum
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  quantization_bits: 4   # only read when adapter.type == "QLoRA"; 4 or 8
+
+training:
+  output_dir: "./runs/rsvqa-lr-paligemma"
+  epochs: 3
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 8
+  learning_rate: 2.0e-5
+  warmup_steps: 20
+  logging_steps: 10
+  save_steps: 200
+  gradient_checkpointing: true    # trades compute for VRAM — matters on hackathon GPUs
+  prompt_prefix: ""               # e.g. "answer en " if you want PaliGemma's task-prefix
+                                   # convention; the transformers docs' fine-tuning example
+                                   # uses the bare question, so that's the default here
+  max_new_tokens_eval: 20          # RSVQA answers are short: yes/no, counts, categories
+
+paths:
+  raw_dir: "./data/raw"
+  processed_dir: "./data/processed"    # canonical JSONL lands here after prepare_dataset.py
+  splits_dir: "./data/splits"          # train.jsonl / val.jsonl / test.jsonl
+  eval_report_path: "./runs/rsvqa-lr-paligemma/eval_report.json"
+  checkpoint_metadata_path: "./runs/rsvqa-lr-paligemma/checkpoint_metadata.json"

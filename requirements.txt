@@ -1,0 +1,45 @@
+# SatQuery AI — every dependency, consolidated into one file during the
+# merge (backend/, training/, and Part 3's preprocessing/ each shipped
+# their own requirements.txt independently; this replaces all three).
+#
+#     pip install -r requirements.txt
+#
+# is now the one command for the whole system — serving, preprocessing,
+# and training. Sectioned below so it stays readable about which part
+# needs what, and so you can trim a section out for a lighter install if
+# you genuinely only need part of the system (e.g. a training-only box
+# doesn't need fastapi/uvicorn) — but the default, and what every README
+# in this repo assumes, is installing all of it at once.
+
+# --- Backend core: API + agent (Part 2) -------------------------------------
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.32
+python-multipart>=0.0.12   # required by FastAPI for Form(...) / File(...) parsing
+
+# --- Shared across every part (Section 4 schemas, model registry config) ---
+pydantic>=2.9,<3.0
+pyyaml>=6.0
+
+# --- Preprocessing & geospatial (Part 3) ------------------------------------
+rasterio>=1.3,<2.0
+numpy>=1.24
+scipy>=1.10
+scikit-image>=0.21
+pillow>=10.0
+
+# --- Model registry & inference (Part 4) / Training & fine-tuning (Part 6) -
+# Only exercised once backend/api/main.py's configure_engine(use_mock=False)
+# is set (see backend/model_registry/README.md) — until then the app runs
+# fully on Part 4's mock engine and none of this is imported. Training
+# itself (training/train.py) always needs these, mock engine or not.
+torch>=2.2
+transformers>=4.47      # PaliGemma 2 support line; also fine for PaliGemma 1
+peft>=0.11
+bitsandbytes>=0.43       # QLoRA's 4-bit loading; needs a CUDA GPU
+accelerate>=0.30
+datasets>=2.19
+
+# --- Dev / test --------------------------------------------------------------
+pytest>=8.3
+pytest-asyncio>=0.24
+httpx>=0.27               # for future TestClient/AsyncClient-based HTTP-layer tests

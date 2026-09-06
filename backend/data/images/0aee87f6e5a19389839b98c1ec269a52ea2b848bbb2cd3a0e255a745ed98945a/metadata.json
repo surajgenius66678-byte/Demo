@@ -1,0 +1,20 @@
+{
+  "band_count": 1,
+  "bounds": [
+    0.0,
+    256.0,
+    256.0,
+    0.0
+  ],
+  "cog_path": "D:\\q\\satquery-ai\\satquery-ai\\backend\\data\\images\\0aee87f6e5a19389839b98c1ec269a52ea2b848bbb2cd3a0e255a745ed98945a\\cog.tif",
+  "crs": null,
+  "dtype": "uint16",
+  "height": 256,
+  "image_id": "0aee87f6e5a19389839b98c1ec269a52ea2b848bbb2cd3a0e255a745ed98945a",
+  "is_valid": true,
+  "modality": "OPTICAL",
+  "resolution_m": 1.0,
+  "timestamp": null,
+  "validation_errors": [],
+  "width": 256
+}
