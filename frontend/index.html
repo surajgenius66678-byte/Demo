@@ -4,116 +4,262 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SatQuery AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f5f4f1;
-    --panel: #ffffff;
-    --border: #dcd8cf;
-    --ink: #1c2430;
-    --ink-muted: #666b74;
-    --accent: #2f5f86;
-    --accent-dark: #23486a;
-    --high: #3f7a52;
-    --high-bg: #e9f1eb;
-    --med: #93641f;
-    --med-bg: #f5efe1;
-    --low: #8a3a33;
-    --low-bg: #f5e9e7;
-    --radius: 6px;
+    --bg: #0a0e15;
+    --panel: #10161f;
+    --panel-alt: #0c111a;
+    --border: #212a38;
+    --border-light: #2c3648;
+    --ink: #e7ebf1;
+    --ink-muted: #7d8797;
+    --ink-dim: #4c5566;
+    --accent: #3b82f6;
+    --accent-dark: #2563eb;
+    --accent-soft: rgba(59,130,246,0.14);
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.12);
+    --amber: #e0a53d;
+    --amber-bg: rgba(224,165,61,0.12);
+    --red: #ef5a52;
+    --red-bg: rgba(239,90,82,0.12);
+    --radius: 12px;
+    --radius-sm: 7px;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--sans);
     background: var(--bg);
     color: var(--ink);
-    line-height: 1.45;
+    line-height: 1.5;
   }
-  .app { max-width: 720px; margin: 0 auto; padding: 16px; }
-  header { margin-bottom: 20px; }
-  header h1 { font-size: 21px; margin: 0 0 3px; font-weight: 600; }
-  header p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+  .app { max-width: 1360px; margin: 0 auto; padding: 20px 24px 40px; }
+ 
+  /* ---------- Topbar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding-bottom: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .logo-mark {
+    width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+    background: radial-gradient(circle at 30% 30%, #5aa0ff, var(--accent-dark));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 700; color: #fff; font-size: 14px;
+  }
+  .brand-name { font-family: var(--mono); font-weight: 700; font-size: 16px; }
+  .brand-name .dim { color: var(--ink-muted); font-weight: 500; }
+  .conn-pill {
+    display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 12px;
+    color: var(--green); background: var(--green-bg); border: 1px solid rgba(34,197,94,0.3);
+    padding: 5px 12px; border-radius: 999px; margin-left: 4px;
+  }
+  .conn-pill.mock { color: var(--amber); background: var(--amber-bg); border-color: rgba(224,165,61,0.3); }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .conn-dot.pulse { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+  .topbar-spacer { flex: 1; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--ink-muted); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px;
+  }
+  .icon-btn:hover { border-color: var(--border-light); color: var(--ink); }
+ 
+  /* ---------- Layout ---------- */
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
+  @media (max-width: 880px) { .main-grid { grid-template-columns: 1fr; } }
+  .main-grid > .panel { height: 640px; display: flex; flex-direction: column; }
+  @media (max-width: 880px) { .main-grid > .panel { height: 480px; } }
+ 
   .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px;
-    margin-bottom: 14px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 18px;
   }
-  .panel h2 { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0 0 10px; }
-  .image-slot { border: 1px dashed var(--border); border-radius: var(--radius); padding: 10px; margin-bottom: 10px; }
-  .image-slot-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-  .field label { font-size: 12px; color: var(--ink-muted); display: block; margin-bottom: 3px; }
-  input[type="file"], select, input[type="date"], input[type="text"] {
-    font: inherit; padding: 6px 8px; border: 1px solid var(--border);
-    border-radius: 4px; background: #fff; color: var(--ink);
+  .panel-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .panel-icon {
+    width: 34px; height: 34px; border-radius: 8px; background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px;
   }
-  input[type="text"] { width: 100%; }
+  .panel-icon.green { background: var(--green-bg); color: var(--green); }
+  .panel-icon.amber { background: var(--amber-bg); color: var(--amber); }
+  .panel-head h2 { font-family: var(--mono); font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  .panel-head p { margin: 0; color: var(--ink-muted); font-size: 12.5px; }
+  .panel-head-actions { margin-left: auto; align-self: center; }
+ 
+  /* ---------- Buttons ---------- */
   .btn {
-    font: inherit; padding: 8px 14px; border-radius: 4px;
-    border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer;
+    font: inherit; font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+    padding: 8px 14px; border-radius: 7px; border: 1px solid var(--accent);
+    background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;
   }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn:not(:disabled):hover { background: var(--accent-dark); }
-  .btn-secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
-  .btn-secondary:not(:disabled):hover { background: #eef3f7; }
-  button:focus-visible, input:focus-visible, select:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px;
+  .btn-outline {
+    background: transparent; color: var(--ink); border: 1px solid var(--border-light);
+    font-family: var(--mono); font-size: 12.5px; padding: 7px 13px; border-radius: 7px; cursor: pointer;
   }
-  .progress-bar { height: 6px; background: #e7e4dd; border-radius: 3px; overflow: hidden; margin-top: 8px; display: none; }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+ 
+  /* ---------- Upload panel ---------- */
+  .dropzone {
+    border: 1.5px dashed var(--border-light); border-radius: var(--radius-sm);
+    padding: 32px 16px; text-align: center; margin-bottom: 18px; transition: opacity .25s ease, max-height .3s ease, margin-bottom .3s ease, padding .3s ease, border-width .3s ease, border-color .15s, background .15s;
+    flex-shrink: 0; overflow: hidden; max-height: 260px; opacity: 1;
+  }
+  .dropzone.dz-hidden {
+    opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0; pointer-events: none;
+  }
+  .dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone-icon { font-size: 24px; color: var(--ink-dim); margin-bottom: 10px; }
+  .dropzone-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .dropzone-sub { font-size: 12px; color: var(--ink-muted); margin-bottom: 14px; }
+  .dropzone-hint { font-size: 11px; color: var(--ink-dim); margin-top: 10px; font-family: var(--mono); }
+ 
+  .staged-head {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--ink-muted);
+    text-transform: uppercase; margin-bottom: 10px; flex-shrink: 0;
+  }
+  .staged-head .status-ok { color: var(--green); }
+ 
+  #imageSlots {
+    flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; margin-right: -4px;
+  }
+  #imageSlots::-webkit-scrollbar, .output-body::-webkit-scrollbar { width: 8px; }
+  #imageSlots::-webkit-scrollbar-thumb, .output-body::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+  #imageSlots::-webkit-scrollbar-track, .output-body::-webkit-scrollbar-track { background: transparent; }
+ 
+  .image-slot {
+    background: var(--panel-alt); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 12px; margin-bottom: 10px;
+  }
+  .image-slot-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .slot-file-icon { font-size: 14px; color: var(--accent); flex-shrink: 0; }
+  .slot-file-name { font-family: var(--mono); font-size: 12.5px; font-weight: 600; word-break: break-all; }
+  .slot-file-size { font-family: var(--mono); font-size: 11px; color: var(--ink-muted); margin-left: 2px; white-space: nowrap; }
+  .slot-remove {
+    margin-left: auto; background: none; border: none; color: var(--ink-muted); cursor: pointer;
+    font-size: 15px; line-height: 1; padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+  }
+  .slot-remove:hover { color: var(--red); background: var(--red-bg); }
+  .slot-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field label {
+    font-size: 10.5px; color: var(--ink-muted); display: block; margin-bottom: 4px;
+    font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  select, input[type="date"], input[type="text"] {
+    font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid var(--border-light);
+    border-radius: 6px; background: var(--panel); color: var(--ink); width: 100%;
+  }
+  select:focus, input:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 10px; display: none; }
   .progress-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
-  .thumb { max-width: 100%; max-height: 140px; border-radius: 4px; display: block; margin-top: 8px; }
+  .thumb { max-width: 100%; max-height: 130px; border-radius: 6px; display: block; margin-top: 10px; border: 1px solid var(--border); }
   .file-placeholder {
-    background: #eeece6; border-radius: 4px; padding: 12px; font-size: 12px;
-    color: var(--ink-muted); margin-top: 8px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 11.5px;
+    color: var(--ink-muted); margin-top: 10px; font-family: var(--mono);
   }
-  .status-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-muted); margin-top: 10px; }
+  .file-warning {
+    background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(224,165,61,0.3);
+    border-radius: 6px; padding: 8px 10px; font-size: 11.5px; margin-top: 10px;
+  }
+ 
+  /* ---------- Output panel ---------- */
+  .output-toolbar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; flex-shrink: 0; }
+  .toggle-btn {
+    font: inherit; font-family: var(--mono); font-size: 12px; padding: 6px 11px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel-alt); cursor: pointer; color: var(--ink-muted);
+  }
+  .toggle-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .toolbar-sep { width: 1px; background: var(--border); margin: 2px 4px; }
+ 
+  .output-body {
+    flex: 1; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--panel-alt); position: relative; overflow-y: auto; overflow-x: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .empty-output { text-align: center; color: var(--ink-muted); padding: 30px; max-width: 320px; }
+  .empty-output-icon { font-size: 30px; color: var(--ink-dim); margin-bottom: 14px; }
+  .empty-output h3 { color: var(--ink); font-size: 15px; margin: 0 0 6px; }
+  .empty-output p { font-size: 12.5px; margin: 0; }
+ 
+  .image-display { position: relative; width: 100%; height: 100%; }
+  .image-display img { width: 100%; height: 100%; object-fit: contain; background: #05070b; display: block; }
+  .no-preview {
+    display: flex; align-items: center; justify-content: center; height: 100%;
+    color: var(--ink-muted); font-size: 12.5px; text-align: center; padding: 16px;
+  }
+  .split-view { display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: 100%; }
+  .split-pane { position: relative; border-right: 1px solid var(--border); }
+  .split-pane:last-child { border-right: none; }
+  .split-pane-label {
+    position: absolute; top: 8px; left: 8px; font-family: var(--mono); font-size: 10px; z-index: 2;
+    background: rgba(0,0,0,0.55); color: #fff; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.04em;
+  }
+  .box-overlay { position: absolute; border: 2px solid #ff8a5b; background: rgba(255,138,91,0.14); pointer-events: none; }
+  .box-label {
+    position: absolute; top: -18px; left: -1px; background: #ff8a5b; color: #1a1005;
+    font-family: var(--mono); font-size: 10px; padding: 1px 5px; border-radius: 3px; white-space: nowrap; font-weight: 600;
+  }
+  .change-overlay { position: absolute; inset: 0; background: rgba(59,130,246,0.32); pointer-events: none; }
+ 
+  /* ---------- Query panel ---------- */
+  .examples-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .examples-label { font-family: var(--mono); font-size: 11px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .example-chip {
+    font: inherit; font-size: 12px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--border-light);
+    background: var(--panel-alt); color: var(--ink-muted); cursor: pointer;
+  }
+  .example-chip:hover { border-color: var(--accent); color: var(--accent); }
+ 
+  .query-row { display: flex; gap: 10px; }
+  .query-row input[type="text"] { flex: 1; padding: 12px 14px; font-size: 13.5px; }
+  .query-row .btn { padding: 0 20px; }
+ 
+  .status-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-muted); margin-top: 12px; }
   .spinner {
     width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
     border: 2px solid var(--border); border-top-color: var(--accent);
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-  .badge-high { background: var(--high-bg); color: var(--high); }
-  .badge-med  { background: var(--med-bg);  color: var(--med); }
-  .badge-low  { background: var(--low-bg);  color: var(--low); }
-  .answer-text { margin: 10px 0; font-size: 14px; max-width: 60ch; }
-  .toggle-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-  .toggle-btn {
-    font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 4px;
-    border: 1px solid var(--border); background: #fff; cursor: pointer; color: var(--ink);
+  .error-banner {
+    background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,90,82,0.3);
+    padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-top: 12px;
   }
-  .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .image-display {
-    position: relative; width: 100%; max-width: 480px; aspect-ratio: 4 / 3;
-    background: #e7e4dd; border-radius: 4px; overflow: hidden; border: 1px solid var(--border);
+  .info-banner {
+    display: flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 12.5px;
+    background: var(--panel-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 14px;
   }
-  .image-display img { width: 100%; height: 100%; object-fit: contain; background: #14161a; }
-  .no-preview {
-    display: flex; align-items: center; justify-content: center; height: 100%;
-    color: var(--ink-muted); font-size: 12px; text-align: center; padding: 12px;
-  }
-  .box-overlay { position: absolute; border: 2px solid #c9542f; background: rgba(201,84,47,0.12); pointer-events: none; }
-  .box-label {
-    position: absolute; top: -18px; left: -1px; background: #c9542f; color: #fff;
-    font-size: 10px; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
-  }
-  .change-overlay { position: absolute; inset: 0; background: rgba(47,95,134,0.28); pointer-events: none; }
+ 
+  .result-box { margin-top: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-alt); padding: 16px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; font-family: var(--mono); letter-spacing: 0.02em; }
+  .badge-high { background: var(--green-bg); color: var(--green); }
+  .badge-med  { background: var(--amber-bg);  color: var(--amber); }
+  .badge-low  { background: var(--red-bg); color: var(--red); }
+  .answer-text { margin: 10px 0; font-size: 14px; max-width: 68ch; }
+  .stats-list { font-family: var(--mono); font-size: 12.5px; color: var(--ink-muted); margin: 10px 0; display: flex; flex-direction: column; gap: 3px; }
+ 
+  .trace-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--ink-muted); text-transform: uppercase; margin: 16px 0 8px; }
   .trace-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
-  .trace-list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--ink-muted); }
+  .trace-list li { display: flex; align-items: center; gap: 8px; padding: 5px 0; color: var(--ink-muted); }
   .trace-list li.done { color: var(--ink); }
-  .trace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
-  .trace-list li.done .trace-dot { background: var(--high); }
-  .trace-time { margin-left: auto; font-size: 11px; }
-  .stats-list { font-size: 13px; color: var(--ink-muted); margin: 8px 0; }
-  .error-banner { background: var(--low-bg); color: var(--low); padding: 10px; border-radius: 4px; font-size: 13px; margin-top: 10px; }
-  .mock-banner {
-    background: #f3ecd9; border: 1px solid #d9c98e; color: #5f4f16;
-    padding: 8px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 14px;
-  }
-  .toolbar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  footer { text-align: center; color: var(--ink-muted); font-size: 11px; margin-top: 20px; }
+  .trace-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-light); flex-shrink: 0; }
+  .trace-list li.done .trace-dot { background: var(--green); }
+  .trace-time { margin-left: auto; font-size: 11px; font-family: var(--mono); }
+ 
+  .toolbar { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  footer { text-align: center; color: var(--ink-dim); font-size: 11px; margin-top: 26px; font-family: var(--mono); }
+ 
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
@@ -121,102 +267,178 @@
 </head>
 <body>
 <div class="app">
-  <header>
-    <h1>SatQuery AI</h1>
-    <p>Ask questions about satellite imagery in plain language.</p>
-  </header>
-
-  <div id="mockBanner" class="mock-banner"></div>
-
-  <section class="panel">
-    <h2>Images</h2>
-    <div id="imageSlots"></div>
-    <button class="btn-secondary btn" id="addSlotBtn" type="button">Add a second image (for change detection)</button>
-  </section>
-
-  <section class="panel">
-    <h2>Query</h2>
-    <input type="text" id="queryInput" placeholder="e.g. Where are the buildings? / What changed between these two images?">
-    <div class="toolbar">
-      <button class="btn" id="analyzeBtn" disabled type="button">Analyze</button>
+ 
+  <div class="topbar">
+    <div class="logo-mark">S</div>
+    <div class="brand-name">SatQuery<span class="dim">.AI</span></div>
+    <div class="conn-pill" id="connPill">
+      <span class="conn-dot pulse"></span><span id="connText">Connecting...</span>
     </div>
+    <div class="topbar-spacer"></div>
+    <div class="icon-btn" title="Docs">&#128196;</div>
+    <div class="icon-btn" title="Settings">&#9881;</div>
+  </div>
+ 
+  <div class="main-grid">
+ 
+    <!-- LEFT: Upload -->
+    <section class="panel">
+      <div class="panel-head">
+        <div class="panel-icon">&#128190;</div>
+        <div>
+          <h2>Images &amp; Upload</h2>
+          <p>Upload rasters or imagery files for analysis</p>
+        </div>
+        <div class="panel-head-actions">
+          <button class="btn" id="addSlotBtn" type="button">+ Add Image</button>
+        </div>
+      </div>
+ 
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-icon">&#9650;</div>
+        <div class="dropzone-title">Drag &amp; drop imagery files or browse</div>
+        <div class="dropzone-sub">Supports TIFF, GeoTIFF, PNG, JPEG, SAFE (Sentinel)</div>
+        <button class="btn-outline" id="browseBtn" type="button">Choose File</button>
+        <input type="file" id="hiddenFileInput" accept=".tif,.tiff,.geotiff,.png,.jpg,.jpeg,.safe" style="display:none;">
+        <div class="dropzone-hint">Backend currently accepts .tif / .tiff / .geotiff only</div>
+      </div>
+ 
+      <div class="staged-head">
+        <span id="stagedCountLabel">STAGED IMAGE INPUTS (0)</span>
+        <span id="stagedStatusLabel"></span>
+      </div>
+      <div id="imageSlots"></div>
+    </section>
+ 
+    <!-- RIGHT: Output -->
+    <section class="panel">
+      <div class="panel-head">
+        <div class="panel-icon green">&#128506;</div>
+        <div>
+          <h2>Output / Visual Results</h2>
+          <p>Spatial detections, overlays, and change masks</p>
+        </div>
+      </div>
+ 
+      <div class="output-toolbar">
+        <button class="toggle-btn active" data-view="single" type="button">&#9635; Single</button>
+        <button class="toggle-btn" data-view="split" type="button">&#9638; Split</button>
+        <div class="toolbar-sep"></div>
+        <button class="toggle-btn active" data-overlay="none" type="button">Image only</button>
+        <button class="toggle-btn" data-overlay="boxes" type="button">&#9671; Boxes</button>
+        <button class="toggle-btn" data-overlay="change" type="button">Change map</button>
+        <div class="toolbar-sep"></div>
+        <button class="toggle-btn" id="exportBtn" type="button" disabled>&#8681; Export</button>
+      </div>
+ 
+      <div class="output-body" id="outputBody">
+        <div class="empty-output">
+          <div class="empty-output-icon">&#128444;</div>
+          <h3>No Analysis Run Yet</h3>
+          <p>Image analysis and visual detection output will appear here once analyzed. Submit a query below to start.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+ 
+  <!-- Query -->
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-icon">&#128172;</div>
+      <div>
+        <h2>Natural Language Geospatial Query</h2>
+        <p>Ask questions across your loaded images</p>
+      </div>
+    </div>
+ 
+    <div class="examples-row">
+      <span class="examples-label">Examples:</span>
+      <button class="example-chip" type="button">Where are the buildings?</button>
+      <button class="example-chip" type="button">What changed between these two images?</button>
+      <button class="example-chip" type="button">Detect all vessels and maritime activity</button>
+    </div>
+ 
+    <div class="query-row">
+      <input type="text" id="queryInput" placeholder="e.g. Where are the buildings? / What changed between these two images?">
+      <button class="btn" id="analyzeBtn" disabled type="button">&#9654; Analyze</button>
+    </div>
+ 
     <div class="status-row" id="statusRow" style="display:none;">
       <div class="spinner"></div>
       <span id="statusText"></span>
     </div>
     <div id="errorBanner" class="error-banner" style="display:none;"></div>
-  </section>
-
-  <section class="panel" id="resultsPanel" style="display:none;">
-    <h2>Result</h2>
-    <div id="confidenceBadge"></div>
-    <p class="answer-text" id="answerText"></p>
-
-    <div id="beforeAfterToggle" class="toggle-row" style="display:none;">
-      <button class="toggle-btn active" data-which="A" type="button">Before</button>
-      <button class="toggle-btn" data-which="B" type="button">After</button>
+ 
+    <div class="info-banner" id="infoBanner">
+      &#8505;&#65039; AI response and attribution insights will appear here after analysis.
     </div>
-
-    <div class="toggle-row" id="overlayToggle">
-      <button class="toggle-btn active" data-overlay="none" type="button">Image only</button>
-      <button class="toggle-btn" data-overlay="boxes" type="button">Boxes</button>
-      <button class="toggle-btn" data-overlay="change" type="button">Change map</button>
-    </div>
-
-    <div class="image-display" id="imageDisplay">
-      <div class="no-preview">Upload an image to see it here.</div>
-    </div>
-
-    <div id="statsList" class="stats-list"></div>
-
-    <h2 style="margin-top:16px;">Execution trace</h2>
-    <ul class="trace-list" id="traceList"></ul>
-
-    <div class="toolbar">
-      <button class="btn-secondary btn" id="downloadBtn" type="button">Download report</button>
+ 
+    <div class="result-box" id="resultsPanel" style="display:none;">
+      <div id="confidenceBadge"></div>
+      <p class="answer-text" id="answerText"></p>
+ 
+      <div class="toolbar" id="beforeAfterToggle" style="display:none;">
+        <button class="toggle-btn active" data-which="A" type="button">Before</button>
+        <button class="toggle-btn" data-which="B" type="button">After</button>
+      </div>
+ 
+      <div id="statsList" class="stats-list"></div>
+ 
+      <div class="trace-head">Execution trace</div>
+      <ul class="trace-list" id="traceList"></ul>
+ 
+      <div class="toolbar">
+        <button class="btn-outline" id="downloadBtn" type="button">&#8681; Download report</button>
+      </div>
     </div>
   </section>
-
-  <footer>SatQuery AI &mdash; Part 1 (Frontend). Mock mode: responses are simulated, no backend required.</footer>
+ 
+  <footer>SatQuery AI &mdash; ask questions about satellite imagery in plain language.</footer>
 </div>
-
+ 
 <script>
 // ---------------------------------------------------------------------------
-// CONFIG — flipped during the Part 1-6 merge: Part 2 (and everything it
-// wires to) now exists, so this points at the real backend instead of the
-// built-in client-side simulation. Every api* function below already had
-// a real-mode branch calling the exact endpoints in architecture.md
-// Section 4, so nothing else needed to change here. Flip MODE back to
-// 'mock' for a zero-backend demo (e.g. Start_program.bat not run yet).
+// CONFIG
 // ---------------------------------------------------------------------------
 const CONFIG = {
   MODE: 'real',                    // 'mock' | 'real'
   BASE_URL: 'http://localhost:8000'
 };
-
+const BACKEND_ACCEPTED_EXTENSIONS = ['.tif', '.tiff', '.geotiff']; // matches current backend validation
+ 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 const state = {
-  slots: {},        // slotId -> { meta, previewUrl } | { meta: null, previewUrl: null }
+  slots: {},        // slotId -> { meta, previewUrl, file } | { meta: null, previewUrl: null, file: null }
   slotOrder: [],
   currentJobId: null,
   pollTimer: null,
   currentOverlay: 'none',
   currentBeforeAfter: 'A',
+  viewMode: 'single', // 'single' | 'split'
   lastResult: null,
   lastTrace: null,
   lastQueryImageCount: 0
 };
 let slotCounter = 0;
-const mockImages = {}; // mock-only: stands in for what a real backend would keep server-side after upload
+const mockImages = {};
 const mockJobs = {};
-
+ 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 function randId(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 10); }
-
+function formatBytes(bytes) {
+  if (!bytes && bytes !== 0) return '';
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? mb.toFixed(1) + ' MB' : (bytes / 1024).toFixed(0) + ' KB';
+}
+function hasAcceptedExtension(filename) {
+  const lower = filename.toLowerCase();
+  return BACKEND_ACCEPTED_EXTENSIONS.some(ext => lower.endsWith(ext));
+}
+ 
 // ---------------------------------------------------------------------------
-// API layer — matches architecture.md Section 4 exactly in both branches.
+// API layer — matches architecture.md Section 4 in both branches.
 // ---------------------------------------------------------------------------
 async function apiUpload(file, modality, timestamp) {
   if (CONFIG.MODE === 'real') {
@@ -226,9 +448,9 @@ async function apiUpload(file, modality, timestamp) {
     if (timestamp) form.append('timestamp', timestamp);
     const res = await fetch(CONFIG.BASE_URL + '/api/upload', { method: 'POST', body: form });
     if (!res.ok) throw new Error('Upload failed (' + res.status + ')');
-    return await res.json(); // server is authoritative for width/height — it actually parsed the file
+    return await res.json();
   }
-  const dims = await getImageDimensions(file); // mock stand-in for server-parsed dimensions
+  const dims = await getImageDimensions(file);
   await wait(300 + Math.random() * 300);
   const meta = {
     image_id: randId('img'), modality, crs: 'EPSG:4326', bounds: null,
@@ -240,7 +462,7 @@ async function apiUpload(file, modality, timestamp) {
   mockImages[meta.image_id] = meta;
   return meta;
 }
-
+ 
 async function apiQuery(query, imageIds) {
   if (CONFIG.MODE === 'real') {
     const res = await fetch(CONFIG.BASE_URL + '/api/query', {
@@ -260,7 +482,7 @@ async function apiQuery(query, imageIds) {
   setTimeout(() => stepMockJob(job_id), 500);
   return { job_id };
 }
-
+ 
 function stepMockJob(job_id) {
   const job = mockJobs[job_id];
   if (!job) return;
@@ -274,7 +496,7 @@ function stepMockJob(job_id) {
     job.result = buildMockResult(job);
   }
 }
-
+ 
 async function apiGetJob(job_id) {
   if (CONFIG.MODE === 'real') {
     const res = await fetch(CONFIG.BASE_URL + '/api/jobs/' + job_id);
@@ -285,7 +507,7 @@ async function apiGetJob(job_id) {
   if (!job) return { status: 'failed', progress: [], result: null, error: 'Job not found' };
   return { status: job.status, progress: job.progress, result: job.result, error: null };
 }
-
+ 
 async function apiGetTrace(job_id) {
   if (CONFIG.MODE === 'real') {
     const res = await fetch(CONFIG.BASE_URL + '/api/jobs/' + job_id + '/trace');
@@ -300,10 +522,9 @@ async function apiGetTrace(job_id) {
   }));
   return { steps };
 }
-
+ 
 // ---------------------------------------------------------------------------
-// Mock intent classification + evidence generation (dev/demo convenience only —
-// the real classifier lives in Part 2, this just makes Part 1 testable alone).
+// Mock intent classification + evidence generation (demo-only convenience)
 // ---------------------------------------------------------------------------
 function classifyMockIntent(query, isMulti) {
   const q = query.toLowerCase();
@@ -315,16 +536,16 @@ function classifyMockIntent(query, isMulti) {
   if (/find|where|locate|show me/.test(q)) return 'GROUNDING';
   return 'SINGLE_IMAGE_VQA';
 }
-
+ 
 function confidenceFromScore(score) {
   const band = score >= 0.8 ? 'HIGH' : score >= 0.55 ? 'MEDIUM' : 'LOW';
   return { value: Math.round(score * 100) / 100, band, basis: 'mock specialist-model score' };
 }
-
+ 
 function buildMockResult(job) {
   const task = job.task;
   const primaryMeta = mockImages[job.imageIds[0]] || { width: 1024, height: 768 };
-
+ 
   if (task === 'UNSUPPORTED') {
     const conf = { value: null, band: 'LOW', basis: 'no applicable specialist model' };
     return {
@@ -335,7 +556,7 @@ function buildMockResult(job) {
       abstain_reason: 'Query does not match a supported analysis task.'
     };
   }
-
+ 
   if (task === 'GROUNDING') {
     const labels = ['building', 'road segment', 'vegetation patch'];
     const count = 2 + Math.floor(Math.random() * 2);
@@ -361,7 +582,7 @@ function buildMockResult(job) {
       abstained: false, abstain_reason: null
     };
   }
-
+ 
   if (task === 'CHANGE_DETECTION' || task === 'CHANGE_VQA') {
     const before = 18 + Math.random() * 10;
     const after = before + (Math.random() * 12 - 3);
@@ -385,8 +606,7 @@ function buildMockResult(job) {
       abstained: false, abstain_reason: null
     };
   }
-
-  // SINGLE_IMAGE_VQA / CAPTIONING fallback
+ 
   const conf = confidenceFromScore(0.55 + Math.random() * 0.35);
   const answer = 'The scene shows a mix of built-up areas, vegetation, and open land, consistent with a semi-urban region.';
   return {
@@ -396,19 +616,15 @@ function buildMockResult(job) {
     abstained: false, abstain_reason: null
   };
 }
-
+ 
 // ---------------------------------------------------------------------------
-// Client-side preview — this is a browser capability, not a backend one, so it
-// runs the same in mock or real mode. GeoTIFF (and anything else a browser
-// can't inline-render) falls back to a dimensions-only placeholder rather than
-// faking a preview. A real GeoTIFF thumbnail needs a server-generated preview
-// image — that belongs in Part 2/3, it's not something Part 1 can solve alone.
+// Client-side preview
 // ---------------------------------------------------------------------------
 function isBrowserRenderable(file) {
   return /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name) ||
     (file.type && file.type.startsWith('image/') && file.type !== 'image/tiff');
 }
-
+ 
 function getImageDimensions(file) {
   return new Promise((resolve) => {
     if (!isBrowserRenderable(file)) { resolve({ width: 1024, height: 768, previewUrl: null }); return; }
@@ -419,39 +635,41 @@ function getImageDimensions(file) {
     img.src = url;
   });
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Image slots
 // ---------------------------------------------------------------------------
 function createSlot() {
   const slotId = 'slot' + (++slotCounter);
-  state.slots[slotId] = { meta: null, previewUrl: null };
+  state.slots[slotId] = { meta: null, previewUrl: null, file: null };
   state.slotOrder.push(slotId);
-
+ 
   const wrap = document.createElement('div');
   wrap.className = 'image-slot';
   wrap.id = slotId;
   wrap.innerHTML =
-    '<div class="image-slot-row">' +
-      '<div class="field"><label>Image file</label>' +
-        '<input type="file" data-role="file" accept=".tif,.tiff,.png,.jpg,.jpeg"></div>' +
+    '<div class="image-slot-top">' +
+      '<span class="slot-file-icon">&#128196;</span>' +
+      '<span class="slot-file-name" data-role="filename">No file chosen</span>' +
+      '<span class="slot-file-size" data-role="filesize"></span>' +
+      '<button type="button" class="slot-remove" data-role="remove" title="Remove">&times;</button>' +
+    '</div>' +
+    '<div class="slot-fields">' +
       '<div class="field"><label>Modality</label>' +
-        '<select data-role="modality"><option value="OPTICAL" selected>Optical</option><option value="SAR">SAR</option></select></div>' +
+        '<select data-role="modality"><option value="OPTICAL" selected>Optical (RGB)</option><option value="SAR">SAR (Synthetic Aperture Radar)</option></select></div>' +
       '<div class="field"><label>Timestamp (optional)</label>' +
         '<input type="date" data-role="timestamp"></div>' +
-      (state.slotOrder.length > 1 ? '<button type="button" class="btn-secondary btn" data-role="remove">Remove</button>' : '') +
     '</div>' +
     '<div class="progress-bar" data-role="progress"><div class="progress-bar-fill"></div></div>' +
     '<div data-role="preview"></div>';
   document.getElementById('imageSlots').appendChild(wrap);
-
-  wrap.querySelector('[data-role="file"]').addEventListener('change', (e) => handleFileSelected(slotId, e));
-  const removeBtn = wrap.querySelector('[data-role="remove"]');
-  if (removeBtn) removeBtn.addEventListener('click', () => removeSlot(slotId));
-
+ 
+  wrap.querySelector('[data-role="remove"]').addEventListener('click', () => removeSlot(slotId));
+ 
+  updateStagedHeader();
   return slotId;
 }
-
+ 
 function removeSlot(slotId) {
   const el = document.getElementById(slotId);
   if (el) el.remove();
@@ -460,38 +678,63 @@ function removeSlot(slotId) {
   }
   delete state.slots[slotId];
   state.slotOrder = state.slotOrder.filter(id => id !== slotId);
-  document.getElementById('addSlotBtn').style.display = state.slotOrder.length >= 2 ? 'none' : 'inline-block';
+  document.getElementById('addSlotBtn').disabled = state.slotOrder.length >= 2;
+  updateStagedHeader();
   updateAnalyzeButtonState();
 }
-
-async function handleFileSelected(slotId, e) {
-  const file = e.target.files[0];
-  if (!file) return;
+ 
+function updateStagedHeader() {
+  const n = state.slotOrder.length;
+  document.getElementById('stagedCountLabel').textContent = 'STAGED IMAGE INPUTS (' + n + ')';
+  const readyCount = state.slotOrder.filter(id => state.slots[id] && state.slots[id].meta).length;
+  document.getElementById('stagedStatusLabel').textContent = readyCount > 0 ? 'Ready for analysis' : '';
+  document.getElementById('addSlotBtn').disabled = n >= 2;
+  updateDropzoneVisibility();
+}
+ 
+function updateDropzoneVisibility() {
+  const dropzone = document.getElementById('dropzone');
+  const hasEmptySlot = state.slotOrder.length === 0 ||
+    state.slotOrder.some(id => state.slots[id] && !state.slots[id].meta);
+  dropzone.classList.toggle('dz-hidden', !hasEmptySlot);
+}
+ 
+async function assignFileToSlot(slotId, file) {
   const wrap = document.getElementById(slotId);
+  if (!wrap || !file) return;
+ 
+  wrap.querySelector('[data-role="filename"]').textContent = file.name;
+  wrap.querySelector('[data-role="filesize"]').textContent = file.size ? '(' + formatBytes(file.size) + ')' : '';
+  const previewWrap = wrap.querySelector('[data-role="preview"]');
+  previewWrap.innerHTML = '';
+ 
+  if (!hasAcceptedExtension(file.name)) {
+    previewWrap.innerHTML = '<div class="file-warning">Heads up: this file type may be rejected by the backend, which currently expects .tif / .tiff / .geotiff.</div>';
+  }
+ 
   const modality = wrap.querySelector('[data-role="modality"]').value;
   const timestampRaw = wrap.querySelector('[data-role="timestamp"]').value;
   const timestamp = timestampRaw ? new Date(timestampRaw).toISOString() : null;
-
+ 
   const progressBar = wrap.querySelector('[data-role="progress"]');
   const progressFill = progressBar.querySelector('.progress-bar-fill');
   progressBar.style.display = 'block';
   progressFill.style.width = '0%';
-
+ 
   const localPreview = await getImageDimensions(file);
-
+ 
   try {
     const meta = await apiUpload(file, modality, timestamp);
     requestAnimationFrame(() => { progressFill.style.width = '100%'; });
     if (state.slots[slotId] && state.slots[slotId].previewUrl) {
       URL.revokeObjectURL(state.slots[slotId].previewUrl);
     }
-    state.slots[slotId] = { meta, previewUrl: localPreview.previewUrl };
-    const previewEl = wrap.querySelector('[data-role="preview"]');
+    state.slots[slotId] = { meta, previewUrl: localPreview.previewUrl, file };
     if (localPreview.previewUrl) {
-      previewEl.innerHTML = '<img class="thumb" src="' + localPreview.previewUrl + '">';
-    } else {
-      previewEl.innerHTML = '<div class="file-placeholder">' + file.name + ' uploaded (' + meta.width + '&times;' + meta.height +
-        'px). Preview isn\'t available for this file type yet.</div>';
+      previewWrap.insertAdjacentHTML('beforeend', '<img class="thumb" src="' + localPreview.previewUrl + '">');
+    } else if (hasAcceptedExtension(file.name)) {
+      previewWrap.insertAdjacentHTML('beforeend', '<div class="file-placeholder">' + file.name + ' uploaded (' + meta.width + '&times;' + meta.height +
+        'px). Preview isn\'t available for this file type yet.</div>');
     }
     setTimeout(() => { progressBar.style.display = 'none'; }, 500);
   } catch (err) {
@@ -499,16 +742,25 @@ async function handleFileSelected(slotId, e) {
     progressBar.style.display = 'none';
     showError('Upload failed: ' + (err.message || 'unknown error'));
   } finally {
+    updateStagedHeader();
     updateAnalyzeButtonState();
   }
 }
-
+ 
+function ensureSlotForFile() {
+  // Reuse the first empty slot if there is one, else create a new one (up to 2).
+  const emptySlotId = state.slotOrder.find(id => state.slots[id] && !state.slots[id].meta);
+  if (emptySlotId) return emptySlotId;
+  if (state.slotOrder.length < 2) return createSlot();
+  return null;
+}
+ 
 function updateAnalyzeButtonState() {
   const query = document.getElementById('queryInput').value.trim();
   const hasImage = state.slotOrder.some(id => state.slots[id] && state.slots[id].meta);
   document.getElementById('analyzeBtn').disabled = !(query && hasImage);
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Analyze / poll / render
 // ---------------------------------------------------------------------------
@@ -519,13 +771,14 @@ async function handleAnalyze() {
     .filter(Boolean);
   if (!query || imageIds.length === 0) return;
   state.lastQueryImageCount = imageIds.length;
-
+ 
   document.getElementById('errorBanner').style.display = 'none';
   document.getElementById('analyzeBtn').disabled = true;
   document.getElementById('statusRow').style.display = 'flex';
   document.getElementById('statusText').textContent = 'Submitting...';
   document.getElementById('resultsPanel').style.display = 'none';
-
+  document.getElementById('infoBanner').style.display = 'flex';
+ 
   try {
     const { job_id } = await apiQuery(query, imageIds);
     state.currentJobId = job_id;
@@ -536,7 +789,7 @@ async function handleAnalyze() {
     document.getElementById('statusRow').style.display = 'none';
   }
 }
-
+ 
 function pollJob(job_id) {
   clearTimeout(state.pollTimer);
   const tick = async () => {
@@ -551,7 +804,7 @@ function pollJob(job_id) {
       const lastStage = jobState.progress[jobState.progress.length - 1];
       document.getElementById('statusText').textContent =
         jobState.status === 'queued' ? 'Queued...' : ('Running: ' + (lastStage || '...'));
-
+ 
       if (jobState.status === 'done') {
         document.getElementById('statusRow').style.display = 'none';
         document.getElementById('analyzeBtn').disabled = false;
@@ -570,94 +823,106 @@ function pollJob(job_id) {
   };
   tick();
 }
-
+ 
 function showError(msg) {
   const el = document.getElementById('errorBanner');
   el.textContent = msg;
   el.style.display = 'block';
 }
-
+ 
 function getSlotMeta(index) {
   const slotId = state.slotOrder[index];
   if (!slotId) return null;
   return state.slots[slotId];
 }
-
-function renderImageAndOverlay() {
-  const container = document.getElementById('imageDisplay');
-  container.innerHTML = '';
-  const idx = state.currentBeforeAfter === 'A' ? 0 : 1;
-  let slot = getSlotMeta(idx);
-  if (!slot || !slot.meta) slot = getSlotMeta(0);
-  if (!slot || !slot.meta) {
-    container.innerHTML = '<div class="no-preview">Upload an image to see it here.</div>';
-    return;
-  }
-
-  if (slot.previewUrl) {
-    const img = document.createElement('img');
-    img.src = slot.previewUrl;
-    container.appendChild(img);
-  } else {
-    const ph = document.createElement('div');
-    ph.className = 'no-preview';
-    ph.textContent = 'No inline preview for this file type (' + slot.meta.width + '\u00d7' + slot.meta.height + 'px).';
-    container.appendChild(ph);
-  }
-
-  const result = state.lastResult;
-  if (!result || state.currentOverlay === 'none') return;
-
+ 
+function renderOutputEmpty() {
+  document.getElementById('outputBody').innerHTML =
+    '<div class="empty-output"><div class="empty-output-icon">&#128444;</div>' +
+    '<h3>No Analysis Run Yet</h3>' +
+    '<p>Image analysis and visual detection output will appear here once analyzed. Submit a query below to start.</p></div>';
+}
+ 
+function buildOverlayHTML(slot, result) {
+  if (!result || state.currentOverlay === 'none' || !slot || !slot.meta) return '';
+  let html = '';
   if (state.currentOverlay === 'boxes') {
     (result.evidence.detections || []).forEach(d => {
       const x0 = d.box_px[0], y0 = d.box_px[1], x1 = d.box_px[2], y1 = d.box_px[3];
-      const box = document.createElement('div');
-      box.className = 'box-overlay';
-      box.style.left = (x0 / slot.meta.width * 100) + '%';
-      box.style.top = (y0 / slot.meta.height * 100) + '%';
-      box.style.width = ((x1 - x0) / slot.meta.width * 100) + '%';
-      box.style.height = ((y1 - y0) / slot.meta.height * 100) + '%';
-      const label = document.createElement('span');
-      label.className = 'box-label';
-      label.textContent = d.label + ' ' + Math.round(d.score * 100) + '%';
-      box.appendChild(label);
-      container.appendChild(box);
+      html += '<div class="box-overlay" style="left:' + (x0 / slot.meta.width * 100) + '%;top:' +
+        (y0 / slot.meta.height * 100) + '%;width:' + ((x1 - x0) / slot.meta.width * 100) + '%;height:' +
+        ((y1 - y0) / slot.meta.height * 100) + '%;">' +
+        '<span class="box-label">' + d.label + ' ' + Math.round(d.score * 100) + '%</span></div>';
     });
   } else if (state.currentOverlay === 'change' && result.evidence.change_map) {
-    const overlay = document.createElement('div');
-    overlay.className = 'change-overlay';
-    container.appendChild(overlay);
+    html += '<div class="change-overlay"></div>';
   }
+  return html;
 }
-
+ 
+function renderPaneContent(slot) {
+  if (!slot || !slot.meta) {
+    return '<div class="no-preview">Upload an image to see it here.</div>';
+  }
+  if (slot.previewUrl) {
+    return '<img src="' + slot.previewUrl + '">';
+  }
+  return '<div class="no-preview">No inline preview for this file type (' + slot.meta.width + '\u00d7' + slot.meta.height + 'px).</div>';
+}
+ 
+function renderImageAndOverlay() {
+  const container = document.getElementById('outputBody');
+  const result = state.lastResult;
+ 
+  if (state.viewMode === 'split' && state.slotOrder.length >= 2) {
+    const slotA = getSlotMeta(0), slotB = getSlotMeta(1);
+    container.innerHTML =
+      '<div class="split-view">' +
+        '<div class="split-pane"><span class="split-pane-label">BEFORE</span>' + renderPaneContent(slotA) + buildOverlayHTML(slotA, result) + '</div>' +
+        '<div class="split-pane"><span class="split-pane-label">AFTER</span>' + renderPaneContent(slotB) + buildOverlayHTML(slotB, result) + '</div>' +
+      '</div>';
+    return;
+  }
+ 
+  const idx = state.currentBeforeAfter === 'A' ? 0 : 1;
+  let slot = getSlotMeta(idx);
+  if (!slot || !slot.meta) slot = getSlotMeta(0);
+ 
+  if (!slot || !slot.meta) { renderOutputEmpty(); return; }
+ 
+  container.innerHTML = '<div class="image-display">' + renderPaneContent(slot) + buildOverlayHTML(slot, result) + '</div>';
+}
+ 
 function renderResults(result) {
   state.lastResult = result;
   state.currentOverlay = 'none';
   state.currentBeforeAfter = 'A';
-  document.querySelectorAll('#overlayToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.overlay === 'none'));
+  document.querySelectorAll('[data-overlay]').forEach(b => b.classList.toggle('active', b.dataset.overlay === 'none'));
   document.querySelectorAll('#beforeAfterToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.which === 'A'));
-
+ 
+  document.getElementById('infoBanner').style.display = 'none';
   document.getElementById('resultsPanel').style.display = 'block';
   document.getElementById('answerText').textContent = result.answer_text;
-
+  document.getElementById('exportBtn').disabled = false;
+ 
   const band = result.confidence.band;
   const badgeClass = band === 'HIGH' ? 'badge-high' : band === 'MEDIUM' ? 'badge-med' : 'badge-low';
   const badge = document.getElementById('confidenceBadge');
   badge.innerHTML = '<span class="badge ' + badgeClass + '">' + band + ' confidence</span>' +
     (result.abstained ? ' <span style="color:var(--ink-muted);font-size:12px;">&mdash; ' + result.abstain_reason + '</span>' : '');
-
-  document.getElementById('beforeAfterToggle').style.display = state.lastQueryImageCount >= 2 ? 'flex' : 'none';
-
+ 
+  document.getElementById('beforeAfterToggle').style.display = (state.lastQueryImageCount >= 2 && state.viewMode === 'single') ? 'flex' : 'none';
+ 
   const statsEl = document.getElementById('statsList');
   const stats = result.evidence.stats || {};
   const statKeys = Object.keys(stats);
   statsEl.innerHTML = statKeys.length
     ? statKeys.map(k => '<div>' + k.replace(/_/g, ' ') + ': ' + (typeof stats[k] === 'number' ? stats[k].toFixed(1) : stats[k]) + '</div>').join('')
     : '';
-
+ 
   renderImageAndOverlay();
 }
-
+ 
 function renderTrace(trace) {
   const list = document.getElementById('traceList');
   list.innerHTML = trace.steps.map(s =>
@@ -665,7 +930,7 @@ function renderTrace(trace) {
     '<span class="trace-time">' + (s.status === 'done' ? s.duration_ms + 'ms' : '...') + '</span></li>'
   ).join('');
 }
-
+ 
 function downloadReport() {
   const result = state.lastResult;
   if (!result) return;
@@ -694,37 +959,91 @@ function downloadReport() {
   a.remove();
   URL.revokeObjectURL(url);
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('mockBanner').textContent = CONFIG.MODE === 'mock'
-    ? 'Mock mode: responses are simulated locally. Set CONFIG.MODE to "real" and CONFIG.BASE_URL once Part 2 is running.'
-    : 'Connected to backend at ' + CONFIG.BASE_URL;
-
+  const connPill = document.getElementById('connPill');
+  const connText = document.getElementById('connText');
+  const connDot = connPill.querySelector('.conn-dot');
+  if (CONFIG.MODE === 'mock') {
+    connPill.classList.add('mock');
+    connDot.classList.remove('pulse');
+    connText.textContent = 'Mock mode — simulated responses';
+  } else {
+    connDot.classList.remove('pulse');
+    connText.textContent = 'Connected to backend at ' + CONFIG.BASE_URL;
+  }
+ 
   createSlot();
-
+ 
   document.getElementById('addSlotBtn').addEventListener('click', () => {
     if (state.slotOrder.length >= 2) return;
     createSlot();
-    document.getElementById('addSlotBtn').style.display = 'none';
   });
-
+ 
+  // Browse / hidden file input
+  const hiddenInput = document.getElementById('hiddenFileInput');
+  document.getElementById('browseBtn').addEventListener('click', () => hiddenInput.click());
+  hiddenInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const slotId = ensureSlotForFile();
+    if (slotId) assignFileToSlot(slotId, file);
+    hiddenInput.value = '';
+  });
+ 
+  // Drag & drop
+  const dropzone = document.getElementById('dropzone');
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); });
+  });
+  dropzone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    const slotId = ensureSlotForFile();
+    if (slotId) assignFileToSlot(slotId, file);
+  });
+ 
   document.getElementById('queryInput').addEventListener('input', updateAnalyzeButtonState);
   document.getElementById('queryInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !document.getElementById('analyzeBtn').disabled) handleAnalyze();
   });
   document.getElementById('analyzeBtn').addEventListener('click', handleAnalyze);
-
-  document.querySelectorAll('#overlayToggle .toggle-btn').forEach(btn => {
+ 
+  document.querySelectorAll('.example-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const input = document.getElementById('queryInput');
+      input.value = chip.textContent;
+      updateAnalyzeButtonState();
+      input.focus();
+    });
+  });
+ 
+  document.querySelectorAll('[data-overlay]').forEach(btn => {
     btn.addEventListener('click', () => {
       state.currentOverlay = btn.dataset.overlay;
-      document.querySelectorAll('#overlayToggle .toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('[data-overlay]').forEach(b => b.classList.toggle('active', b === btn));
       renderImageAndOverlay();
     });
   });
-
+ 
+  document.querySelectorAll('[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.viewMode = btn.dataset.view;
+      document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b === btn));
+      document.getElementById('beforeAfterToggle').style.display =
+        (state.lastQueryImageCount >= 2 && state.viewMode === 'single' && state.lastResult) ? 'flex' : 'none';
+      if (state.lastResult || state.slotOrder.some(id => state.slots[id] && state.slots[id].meta)) {
+        renderImageAndOverlay();
+      }
+    });
+  });
+ 
   document.querySelectorAll('#beforeAfterToggle .toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.currentBeforeAfter = btn.dataset.which;
@@ -732,9 +1051,11 @@ document.addEventListener('DOMContentLoaded', () => {
       renderImageAndOverlay();
     });
   });
-
+ 
   document.getElementById('downloadBtn').addEventListener('click', downloadReport);
+  document.getElementById('exportBtn').addEventListener('click', downloadReport);
 });
 </script>
 </body>
 </html>
+ 

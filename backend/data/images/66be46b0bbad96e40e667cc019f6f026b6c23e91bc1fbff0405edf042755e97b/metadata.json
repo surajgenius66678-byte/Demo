@@ -1,0 +1,17 @@
+{
+  "band_count": 0,
+  "bounds": null,
+  "cog_path": "",
+  "crs": null,
+  "dtype": "unknown",
+  "height": 0,
+  "image_id": "66be46b0bbad96e40e667cc019f6f026b6c23e91bc1fbff0405edf042755e97b",
+  "is_valid": false,
+  "modality": "OPTICAL",
+  "resolution_m": null,
+  "timestamp": null,
+  "validation_errors": [
+    "unsupported file extension '.png'; expected one of ['.geotiff', '.tif', '.tiff']"
+  ],
+  "width": 0
+}

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SatQuery AI</title>
+<style>
+  :root {
+    --bg: #f5f4f1;
+    --panel: #ffffff;
+    --border: #dcd8cf;
+    --ink: #1c2430;
+    --ink-muted: #666b74;
+    --accent: #2f5f86;
+    --accent-dark: #23486a;
+    --high: #3f7a52;
+    --high-bg: #e9f1eb;
+    --med: #93641f;
+    --med-bg: #f5efe1;
+    --low: #8a3a33;
+    --low-bg: #f5e9e7;
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .app { max-width: 720px; margin: 0 auto; padding: 16px; }
+  header { margin-bottom: 20px; }
+  header h1 { font-size: 21px; margin: 0 0 3px; font-weight: 600; }
+  header p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .panel h2 { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0 0 10px; }
+  .image-slot { border: 1px dashed var(--border); border-radius: var(--radius); padding: 10px; margin-bottom: 10px; }
+  .image-slot-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field label { font-size: 12px; color: var(--ink-muted); display: block; margin-bottom: 3px; }
+  input[type="file"], select, input[type="date"], input[type="text"] {
+    font: inherit; padding: 6px 8px; border: 1px solid var(--border);
+    border-radius: 4px; background: #fff; color: var(--ink);
+  }
+  input[type="text"] { width: 100%; }
+  .btn {
+    font: inherit; padding: 8px 14px; border-radius: 4px;
+    border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:not(:disabled):hover { background: var(--accent-dark); }
+  .btn-secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-secondary:not(:disabled):hover { background: #eef3f7; }
+  button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .progress-bar { height: 6px; background: #e7e4dd; border-radius: 3px; overflow: hidden; margin-top: 8px; display: none; }
+  .progress-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+  .thumb { max-width: 100%; max-height: 140px; border-radius: 4px; display: block; margin-top: 8px; }
+  .file-placeholder {
+    background: #eeece6; border-radius: 4px; padding: 12px; font-size: 12px;
+    color: var(--ink-muted); margin-top: 8px;
+  }
+  .status-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-muted); margin-top: 10px; }
+  .spinner {
+    width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge-high { background: var(--high-bg); color: var(--high); }
+  .badge-med  { background: var(--med-bg);  color: var(--med); }
+  .badge-low  { background: var(--low-bg);  color: var(--low); }
+  .answer-text { margin: 10px 0; font-size: 14px; max-width: 60ch; }
+  .toggle-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .toggle-btn {
+    font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 4px;
+    border: 1px solid var(--border); background: #fff; cursor: pointer; color: var(--ink);
+  }
+  .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .image-display {
+    position: relative; width: 100%; max-width: 480px; aspect-ratio: 4 / 3;
+    background: #e7e4dd; border-radius: 4px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .image-display img { width: 100%; height: 100%; object-fit: contain; background: #14161a; }
+  .no-preview {
+    display: flex; align-items: center; justify-content: center; height: 100%;
+    color: var(--ink-muted); font-size: 12px; text-align: center; padding: 12px;
+  }
+  .box-overlay { position: absolute; border: 2px solid #c9542f; background: rgba(201,84,47,0.12); pointer-events: none; }
+  .box-label {
+    position: absolute; top: -18px; left: -1px; background: #c9542f; color: #fff;
+    font-size: 10px; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+  }
+  .change-overlay { position: absolute; inset: 0; background: rgba(47,95,134,0.28); pointer-events: none; }
+  .trace-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .trace-list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--ink-muted); }
+  .trace-list li.done { color: var(--ink); }
+  .trace-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .trace-list li.done .trace-dot { background: var(--high); }
+  .trace-time { margin-left: auto; font-size: 11px; }
+  .stats-list { font-size: 13px; color: var(--ink-muted); margin: 8px 0; }
+  .error-banner { background: var(--low-bg); color: var(--low); padding: 10px; border-radius: 4px; font-size: 13px; margin-top: 10px; }
+  .mock-banner {
+    background: #f3ecd9; border: 1px solid #d9c98e; color: #5f4f16;
+    padding: 8px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 14px;
+  }
+  .toolbar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  footer { text-align: center; color: var(--ink-muted); font-size: 11px; margin-top: 20px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>SatQuery AI</h1>
+    <p>Ask questions about satellite imagery in plain language.</p>
+  </header>
+
+  <div id="mockBanner" class="mock-banner"></div>
+
+  <section class="panel">
+    <h2>Images</h2>
+    <div id="imageSlots"></div>
+    <button class="btn-secondary btn" id="addSlotBtn" type="button">Add a second image (for change detection)</button>
+  </section>
+
+  <section class="panel">
+    <h2>Query</h2>
+    <input type="text" id="queryInput" placeholder="e.g. Where are the buildings? / What changed between these two images?">
+    <div class="toolbar">
+      <button class="btn" id="analyzeBtn" disabled type="button">Analyze</button>
+    </div>
+    <div class="status-row" id="statusRow" style="display:none;">
+      <div class="spinner"></div>
+      <span id="statusText"></span>
+    </div>
+    <div id="errorBanner" class="error-banner" style="display:none;"></div>
+  </section>
+
+  <section class="panel" id="resultsPanel" style="display:none;">
+    <h2>Result</h2>
+    <div id="confidenceBadge"></div>
+    <p class="answer-text" id="answerText"></p>
+
+    <div id="beforeAfterToggle" class="toggle-row" style="display:none;">
+      <button class="toggle-btn active" data-which="A" type="button">Before</button>
+      <button class="toggle-btn" data-which="B" type="button">After</button>
+    </div>
+
+    <div class="toggle-row" id="overlayToggle">
+      <button class="toggle-btn active" data-overlay="none" type="button">Image only</button>
+      <button class="toggle-btn" data-overlay="boxes" type="button">Boxes</button>
+      <button class="toggle-btn" data-overlay="change" type="button">Change map</button>
+    </div>
+
+    <div class="image-display" id="imageDisplay">
+      <div class="no-preview">Upload an image to see it here.</div>
+    </div>
+
+    <div id="statsList" class="stats-list"></div>
+
+    <h2 style="margin-top:16px;">Execution trace</h2>
+    <ul class="trace-list" id="traceList"></ul>
+
+    <div class="toolbar">
+      <button class="btn-secondary btn" id="downloadBtn" type="button">Download report</button>
+    </div>
+  </section>
+
+  <footer>SatQuery AI &mdash; Part 1 (Frontend). Mock mode: responses are simulated, no backend required.</footer>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// CONFIG — flipped during the Part 1-6 merge: Part 2 (and everything it
+// wires to) now exists, so this points at the real backend instead of the
+// built-in client-side simulation. Every api* function below already had
+// a real-mode branch calling the exact endpoints in architecture.md
+// Section 4, so nothing else needed to change here. Flip MODE back to
+// 'mock' for a zero-backend demo (e.g. Start_program.bat not run yet).
+// ---------------------------------------------------------------------------
+const CONFIG = {
+  MODE: 'real',                    // 'mock' | 'real'
+  BASE_URL: 'http://localhost:8000'
+};
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+const state = {
+  slots: {},        // slotId -> { meta, previewUrl } | { meta: null, previewUrl: null }
+  slotOrder: [],
+  currentJobId: null,
+  pollTimer: null,
+  currentOverlay: 'none',
+  currentBeforeAfter: 'A',
+  lastResult: null,
+  lastTrace: null,
+  lastQueryImageCount: 0
+};
+let slotCounter = 0;
+const mockImages = {}; // mock-only: stands in for what a real backend would keep server-side after upload
+const mockJobs = {};
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+function randId(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 10); }
+
+// ---------------------------------------------------------------------------
+// API layer — matches architecture.md Section 4 exactly in both branches.
+// ---------------------------------------------------------------------------
+async function apiUpload(file, modality, timestamp) {
+  if (CONFIG.MODE === 'real') {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('modality', modality);
+    if (timestamp) form.append('timestamp', timestamp);
+    const res = await fetch(CONFIG.BASE_URL + '/api/upload', { method: 'POST', body: form });
+    if (!res.ok) throw new Error('Upload failed (' + res.status + ')');
+    return await res.json(); // server is authoritative for width/height — it actually parsed the file
+  }
+  const dims = await getImageDimensions(file); // mock stand-in for server-parsed dimensions
+  await wait(300 + Math.random() * 300);
+  const meta = {
+    image_id: randId('img'), modality, crs: 'EPSG:4326', bounds: null,
+    width: dims.width, height: dims.height,
+    band_count: modality === 'SAR' ? 1 : 3, dtype: 'uint8', resolution_m: 10,
+    timestamp: timestamp || null, cog_path: 'mock://' + file.name,
+    is_valid: true, validation_errors: []
+  };
+  mockImages[meta.image_id] = meta;
+  return meta;
+}
+
+async function apiQuery(query, imageIds) {
+  if (CONFIG.MODE === 'real') {
+    const res = await fetch(CONFIG.BASE_URL + '/api/query', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, image_ids: imageIds })
+    });
+    if (!res.ok) throw new Error('Query failed (' + res.status + ')');
+    return await res.json();
+  }
+  const job_id = randId('job');
+  const isMulti = imageIds.length >= 2;
+  const task = classifyMockIntent(query, isMulti);
+  const stages = isMulti
+    ? ['validating inputs', 'checking co-registration', 'running specialist model', 'validating evidence', 'generating explanation']
+    : ['validating inputs', 'classifying intent', 'running specialist model', 'validating evidence', 'generating explanation'];
+  mockJobs[job_id] = { status: 'queued', progress: [], stageIndex: -1, stages, task, query, imageIds, result: null };
+  setTimeout(() => stepMockJob(job_id), 500);
+  return { job_id };
+}
+
+function stepMockJob(job_id) {
+  const job = mockJobs[job_id];
+  if (!job) return;
+  job.status = 'running';
+  job.stageIndex++;
+  if (job.stageIndex < job.stages.length) {
+    job.progress.push(job.stages[job.stageIndex]);
+    setTimeout(() => stepMockJob(job_id), 800 + Math.random() * 500);
+  } else {
+    job.status = 'done';
+    job.result = buildMockResult(job);
+  }
+}
+
+async function apiGetJob(job_id) {
+  if (CONFIG.MODE === 'real') {
+    const res = await fetch(CONFIG.BASE_URL + '/api/jobs/' + job_id);
+    if (!res.ok) throw new Error('Could not fetch job status (' + res.status + ')');
+    return await res.json();
+  }
+  const job = mockJobs[job_id];
+  if (!job) return { status: 'failed', progress: [], result: null, error: 'Job not found' };
+  return { status: job.status, progress: job.progress, result: job.result, error: null };
+}
+
+async function apiGetTrace(job_id) {
+  if (CONFIG.MODE === 'real') {
+    const res = await fetch(CONFIG.BASE_URL + '/api/jobs/' + job_id + '/trace');
+    if (!res.ok) throw new Error('Could not fetch execution trace (' + res.status + ')');
+    return await res.json();
+  }
+  const job = mockJobs[job_id];
+  if (!job) return { steps: [] };
+  const steps = job.stages.map((s, i) => ({
+    stage: s, status: i <= job.stageIndex ? 'done' : 'pending',
+    duration_ms: 800 + Math.floor(Math.random() * 400)
+  }));
+  return { steps };
+}
+
+// ---------------------------------------------------------------------------
+// Mock intent classification + evidence generation (dev/demo convenience only —
+// the real classifier lives in Part 2, this just makes Part 1 testable alone).
+// ---------------------------------------------------------------------------
+function classifyMockIntent(query, isMulti) {
+  const q = query.toLowerCase();
+  if (isMulti) {
+    if (/did|has|increase|decrease|more|less/.test(q)) return 'CHANGE_VQA';
+    return 'CHANGE_DETECTION';
+  }
+  if (/population|predict|future|forecast/.test(q)) return 'UNSUPPORTED';
+  if (/find|where|locate|show me/.test(q)) return 'GROUNDING';
+  return 'SINGLE_IMAGE_VQA';
+}
+
+function confidenceFromScore(score) {
+  const band = score >= 0.8 ? 'HIGH' : score >= 0.55 ? 'MEDIUM' : 'LOW';
+  return { value: Math.round(score * 100) / 100, band, basis: 'mock specialist-model score' };
+}
+
+function buildMockResult(job) {
+  const task = job.task;
+  const primaryMeta = mockImages[job.imageIds[0]] || { width: 1024, height: 768 };
+
+  if (task === 'UNSUPPORTED') {
+    const conf = { value: null, band: 'LOW', basis: 'no applicable specialist model' };
+    return {
+      answer_text: "This isn't something SatQuery can answer from imagery alone.",
+      confidence: conf,
+      evidence: { task, model_used: 'none', modality_used: [], detections: [], change_map: null, vqa_answer_raw: null, stats: {}, confidence: conf, warnings: ['query outside supported task set'] },
+      abstained: true,
+      abstain_reason: 'Query does not match a supported analysis task.'
+    };
+  }
+
+  if (task === 'GROUNDING') {
+    const labels = ['building', 'road segment', 'vegetation patch'];
+    const count = 2 + Math.floor(Math.random() * 2);
+    const detections = labels.slice(0, count).map((label, i) => {
+      const x0pct = 10 + i * 25, y0pct = 15 + i * 12, wPct = 20, hPct = 20;
+      return {
+        label,
+        box_px: [
+          Math.round(x0pct / 100 * primaryMeta.width),
+          Math.round(y0pct / 100 * primaryMeta.height),
+          Math.round((x0pct + wPct) / 100 * primaryMeta.width),
+          Math.round((y0pct + hPct) / 100 * primaryMeta.height)
+        ],
+        mask_rle: null,
+        score: 0.65 + Math.random() * 0.3
+      };
+    });
+    const conf = confidenceFromScore(Math.max.apply(null, detections.map(d => d.score)));
+    return {
+      answer_text: 'Found ' + detections.length + ' candidate region(s) matching your query — see the boxes on the image.',
+      confidence: conf,
+      evidence: { task, model_used: 'mock-grounding-v0', modality_used: ['OPTICAL'], detections, change_map: null, vqa_answer_raw: null, stats: {}, confidence: conf, warnings: [] },
+      abstained: false, abstain_reason: null
+    };
+  }
+
+  if (task === 'CHANGE_DETECTION' || task === 'CHANGE_VQA') {
+    const before = 18 + Math.random() * 10;
+    const after = before + (Math.random() * 12 - 3);
+    const changedPct = 4 + Math.random() * 10;
+    const conf = confidenceFromScore(0.6 + Math.random() * 0.3);
+    const changeMap = {
+      probability_raster_path: 'mock://change_map.tif',
+      changed_area_px: Math.round(changedPct * 10000),
+      changed_area_pct: changedPct,
+      mean_confidence: conf.value
+    };
+    const stats = { built_up_pct_before: before, built_up_pct_after: after };
+    const answer = task === 'CHANGE_VQA'
+      ? 'Built-up area appears to have ' + (after > before ? 'increased' : 'decreased') +
+        ', from ' + before.toFixed(1) + '% to ' + after.toFixed(1) + '% of the scene.'
+      : 'About ' + changedPct.toFixed(1) + '% of the scene shows detected change between the two dates.';
+    return {
+      answer_text: answer,
+      confidence: conf,
+      evidence: { task, model_used: 'mock-change-detector-v0', modality_used: ['OPTICAL'], detections: [], change_map: changeMap, vqa_answer_raw: null, stats, confidence: conf, warnings: [] },
+      abstained: false, abstain_reason: null
+    };
+  }
+
+  // SINGLE_IMAGE_VQA / CAPTIONING fallback
+  const conf = confidenceFromScore(0.55 + Math.random() * 0.35);
+  const answer = 'The scene shows a mix of built-up areas, vegetation, and open land, consistent with a semi-urban region.';
+  return {
+    answer_text: answer,
+    confidence: conf,
+    evidence: { task: 'SINGLE_IMAGE_VQA', model_used: 'mock-vlm-v0', modality_used: ['OPTICAL'], detections: [], change_map: null, vqa_answer_raw: answer, stats: {}, confidence: conf, warnings: [] },
+    abstained: false, abstain_reason: null
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Client-side preview — this is a browser capability, not a backend one, so it
+// runs the same in mock or real mode. GeoTIFF (and anything else a browser
+// can't inline-render) falls back to a dimensions-only placeholder rather than
+// faking a preview. A real GeoTIFF thumbnail needs a server-generated preview
+// image — that belongs in Part 2/3, it's not something Part 1 can solve alone.
+// ---------------------------------------------------------------------------
+function isBrowserRenderable(file) {
+  return /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name) ||
+    (file.type && file.type.startsWith('image/') && file.type !== 'image/tiff');
+}
+
+function getImageDimensions(file) {
+  return new Promise((resolve) => {
+    if (!isBrowserRenderable(file)) { resolve({ width: 1024, height: 768, previewUrl: null }); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, previewUrl: url });
+    img.onerror = () => { URL.revokeObjectURL(url); resolve({ width: 1024, height: 768, previewUrl: null }); };
+    img.src = url;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Image slots
+// ---------------------------------------------------------------------------
+function createSlot() {
+  const slotId = 'slot' + (++slotCounter);
+  state.slots[slotId] = { meta: null, previewUrl: null };
+  state.slotOrder.push(slotId);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'image-slot';
+  wrap.id = slotId;
+  wrap.innerHTML =
+    '<div class="image-slot-row">' +
+      '<div class="field"><label>Image file</label>' +
+        '<input type="file" data-role="file" accept=".tif,.tiff,.png,.jpg,.jpeg"></div>' +
+      '<div class="field"><label>Modality</label>' +
+        '<select data-role="modality"><option value="OPTICAL" selected>Optical</option><option value="SAR">SAR</option></select></div>' +
+      '<div class="field"><label>Timestamp (optional)</label>' +
+        '<input type="date" data-role="timestamp"></div>' +
+      (state.slotOrder.length > 1 ? '<button type="button" class="btn-secondary btn" data-role="remove">Remove</button>' : '') +
+    '</div>' +
+    '<div class="progress-bar" data-role="progress"><div class="progress-bar-fill"></div></div>' +
+    '<div data-role="preview"></div>';
+  document.getElementById('imageSlots').appendChild(wrap);
+
+  wrap.querySelector('[data-role="file"]').addEventListener('change', (e) => handleFileSelected(slotId, e));
+  const removeBtn = wrap.querySelector('[data-role="remove"]');
+  if (removeBtn) removeBtn.addEventListener('click', () => removeSlot(slotId));
+
+  return slotId;
+}
+
+function removeSlot(slotId) {
+  const el = document.getElementById(slotId);
+  if (el) el.remove();
+  if (state.slots[slotId] && state.slots[slotId].previewUrl) {
+    URL.revokeObjectURL(state.slots[slotId].previewUrl);
+  }
+  delete state.slots[slotId];
+  state.slotOrder = state.slotOrder.filter(id => id !== slotId);
+  document.getElementById('addSlotBtn').style.display = state.slotOrder.length >= 2 ? 'none' : 'inline-block';
+  updateAnalyzeButtonState();
+}
+
+async function handleFileSelected(slotId, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const wrap = document.getElementById(slotId);
+  const modality = wrap.querySelector('[data-role="modality"]').value;
+  const timestampRaw = wrap.querySelector('[data-role="timestamp"]').value;
+  const timestamp = timestampRaw ? new Date(timestampRaw).toISOString() : null;
+
+  const progressBar = wrap.querySelector('[data-role="progress"]');
+  const progressFill = progressBar.querySelector('.progress-bar-fill');
+  progressBar.style.display = 'block';
+  progressFill.style.width = '0%';
+
+  const localPreview = await getImageDimensions(file);
+
+  try {
+    const meta = await apiUpload(file, modality, timestamp);
+    requestAnimationFrame(() => { progressFill.style.width = '100%'; });
+    if (state.slots[slotId] && state.slots[slotId].previewUrl) {
+      URL.revokeObjectURL(state.slots[slotId].previewUrl);
+    }
+    state.slots[slotId] = { meta, previewUrl: localPreview.previewUrl };
+    const previewEl = wrap.querySelector('[data-role="preview"]');
+    if (localPreview.previewUrl) {
+      previewEl.innerHTML = '<img class="thumb" src="' + localPreview.previewUrl + '">';
+    } else {
+      previewEl.innerHTML = '<div class="file-placeholder">' + file.name + ' uploaded (' + meta.width + '&times;' + meta.height +
+        'px). Preview isn\'t available for this file type yet.</div>';
+    }
+    setTimeout(() => { progressBar.style.display = 'none'; }, 500);
+  } catch (err) {
+    if (localPreview.previewUrl) URL.revokeObjectURL(localPreview.previewUrl);
+    progressBar.style.display = 'none';
+    showError('Upload failed: ' + (err.message || 'unknown error'));
+  } finally {
+    updateAnalyzeButtonState();
+  }
+}
+
+function updateAnalyzeButtonState() {
+  const query = document.getElementById('queryInput').value.trim();
+  const hasImage = state.slotOrder.some(id => state.slots[id] && state.slots[id].meta);
+  document.getElementById('analyzeBtn').disabled = !(query && hasImage);
+}
+
+// ---------------------------------------------------------------------------
+// Analyze / poll / render
+// ---------------------------------------------------------------------------
+async function handleAnalyze() {
+  const query = document.getElementById('queryInput').value.trim();
+  const imageIds = state.slotOrder
+    .map(id => state.slots[id] && state.slots[id].meta && state.slots[id].meta.image_id)
+    .filter(Boolean);
+  if (!query || imageIds.length === 0) return;
+  state.lastQueryImageCount = imageIds.length;
+
+  document.getElementById('errorBanner').style.display = 'none';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('statusRow').style.display = 'flex';
+  document.getElementById('statusText').textContent = 'Submitting...';
+  document.getElementById('resultsPanel').style.display = 'none';
+
+  try {
+    const { job_id } = await apiQuery(query, imageIds);
+    state.currentJobId = job_id;
+    pollJob(job_id);
+  } catch (err) {
+    showError(err.message || 'Could not submit the query. Check the connection and try again.');
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('statusRow').style.display = 'none';
+  }
+}
+
+function pollJob(job_id) {
+  clearTimeout(state.pollTimer);
+  const tick = async () => {
+    try {
+      const jobState = await apiGetJob(job_id);
+      if (jobState.status === 'failed') {
+        showError(jobState.error || 'The analysis failed.');
+        document.getElementById('statusRow').style.display = 'none';
+        document.getElementById('analyzeBtn').disabled = false;
+        return;
+      }
+      const lastStage = jobState.progress[jobState.progress.length - 1];
+      document.getElementById('statusText').textContent =
+        jobState.status === 'queued' ? 'Queued...' : ('Running: ' + (lastStage || '...'));
+
+      if (jobState.status === 'done') {
+        document.getElementById('statusRow').style.display = 'none';
+        document.getElementById('analyzeBtn').disabled = false;
+        renderResults(jobState.result);
+        const trace = await apiGetTrace(job_id);
+        state.lastTrace = trace;
+        renderTrace(trace);
+        return;
+      }
+      state.pollTimer = setTimeout(tick, 1200);
+    } catch (err) {
+      showError(err.message || 'Lost connection while checking job status.');
+      document.getElementById('statusRow').style.display = 'none';
+      document.getElementById('analyzeBtn').disabled = false;
+    }
+  };
+  tick();
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function getSlotMeta(index) {
+  const slotId = state.slotOrder[index];
+  if (!slotId) return null;
+  return state.slots[slotId];
+}
+
+function renderImageAndOverlay() {
+  const container = document.getElementById('imageDisplay');
+  container.innerHTML = '';
+  const idx = state.currentBeforeAfter === 'A' ? 0 : 1;
+  let slot = getSlotMeta(idx);
+  if (!slot || !slot.meta) slot = getSlotMeta(0);
+  if (!slot || !slot.meta) {
+    container.innerHTML = '<div class="no-preview">Upload an image to see it here.</div>';
+    return;
+  }
+
+  if (slot.previewUrl) {
+    const img = document.createElement('img');
+    img.src = slot.previewUrl;
+    container.appendChild(img);
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'no-preview';
+    ph.textContent = 'No inline preview for this file type (' + slot.meta.width + '\u00d7' + slot.meta.height + 'px).';
+    container.appendChild(ph);
+  }
+
+  const result = state.lastResult;
+  if (!result || state.currentOverlay === 'none') return;
+
+  if (state.currentOverlay === 'boxes') {
+    (result.evidence.detections || []).forEach(d => {
+      const x0 = d.box_px[0], y0 = d.box_px[1], x1 = d.box_px[2], y1 = d.box_px[3];
+      const box = document.createElement('div');
+      box.className = 'box-overlay';
+      box.style.left = (x0 / slot.meta.width * 100) + '%';
+      box.style.top = (y0 / slot.meta.height * 100) + '%';
+      box.style.width = ((x1 - x0) / slot.meta.width * 100) + '%';
+      box.style.height = ((y1 - y0) / slot.meta.height * 100) + '%';
+      const label = document.createElement('span');
+      label.className = 'box-label';
+      label.textContent = d.label + ' ' + Math.round(d.score * 100) + '%';
+      box.appendChild(label);
+      container.appendChild(box);
+    });
+  } else if (state.currentOverlay === 'change' && result.evidence.change_map) {
+    const overlay = document.createElement('div');
+    overlay.className = 'change-overlay';
+    container.appendChild(overlay);
+  }
+}
+
+function renderResults(result) {
+  state.lastResult = result;
+  state.currentOverlay = 'none';
+  state.currentBeforeAfter = 'A';
+  document.querySelectorAll('#overlayToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.overlay === 'none'));
+  document.querySelectorAll('#beforeAfterToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.which === 'A'));
+
+  document.getElementById('resultsPanel').style.display = 'block';
+  document.getElementById('answerText').textContent = result.answer_text;
+
+  const band = result.confidence.band;
+  const badgeClass = band === 'HIGH' ? 'badge-high' : band === 'MEDIUM' ? 'badge-med' : 'badge-low';
+  const badge = document.getElementById('confidenceBadge');
+  badge.innerHTML = '<span class="badge ' + badgeClass + '">' + band + ' confidence</span>' +
+    (result.abstained ? ' <span style="color:var(--ink-muted);font-size:12px;">&mdash; ' + result.abstain_reason + '</span>' : '');
+
+  document.getElementById('beforeAfterToggle').style.display = state.lastQueryImageCount >= 2 ? 'flex' : 'none';
+
+  const statsEl = document.getElementById('statsList');
+  const stats = result.evidence.stats || {};
+  const statKeys = Object.keys(stats);
+  statsEl.innerHTML = statKeys.length
+    ? statKeys.map(k => '<div>' + k.replace(/_/g, ' ') + ': ' + (typeof stats[k] === 'number' ? stats[k].toFixed(1) : stats[k]) + '</div>').join('')
+    : '';
+
+  renderImageAndOverlay();
+}
+
+function renderTrace(trace) {
+  const list = document.getElementById('traceList');
+  list.innerHTML = trace.steps.map(s =>
+    '<li class="' + (s.status === 'done' ? 'done' : '') + '"><span class="trace-dot"></span>' + s.stage +
+    '<span class="trace-time">' + (s.status === 'done' ? s.duration_ms + 'ms' : '...') + '</span></li>'
+  ).join('');
+}
+
+function downloadReport() {
+  const result = state.lastResult;
+  if (!result) return;
+  const query = document.getElementById('queryInput').value.trim();
+  const trace = state.lastTrace ? state.lastTrace.steps.map(s => '- ' + s.stage + ' (' + s.status + ')').join('\n') : '';
+  const stats = Object.entries(result.evidence.stats || {}).map(([k, v]) => '- ' + k + ': ' + v).join('\n');
+  const text = 'SatQuery AI \u2014 Report\n' +
+    'Generated: ' + new Date().toISOString() + '\n\n' +
+    'Query: ' + query + '\n\n' +
+    'Answer: ' + result.answer_text + '\n' +
+    'Confidence: ' + result.confidence.band + (result.confidence.value != null ? ' (' + result.confidence.value + ')' : '') + '\n' +
+    'Basis: ' + result.confidence.basis + '\n' +
+    (result.abstained ? '\nAbstained: ' + result.abstain_reason + '\n' : '') +
+    '\nEvidence\n' +
+    'Task: ' + result.evidence.task + '\n' +
+    'Model: ' + result.evidence.model_used + '\n' +
+    (stats ? '\nStats:\n' + stats + '\n' : '') +
+    '\nExecution trace:\n' + trace + '\n';
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'satquery-report.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('mockBanner').textContent = CONFIG.MODE === 'mock'
+    ? 'Mock mode: responses are simulated locally. Set CONFIG.MODE to "real" and CONFIG.BASE_URL once Part 2 is running.'
+    : 'Connected to backend at ' + CONFIG.BASE_URL;
+
+  createSlot();
+
+  document.getElementById('addSlotBtn').addEventListener('click', () => {
+    if (state.slotOrder.length >= 2) return;
+    createSlot();
+    document.getElementById('addSlotBtn').style.display = 'none';
+  });
+
+  document.getElementById('queryInput').addEventListener('input', updateAnalyzeButtonState);
+  document.getElementById('queryInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !document.getElementById('analyzeBtn').disabled) handleAnalyze();
+  });
+  document.getElementById('analyzeBtn').addEventListener('click', handleAnalyze);
+
+  document.querySelectorAll('#overlayToggle .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.currentOverlay = btn.dataset.overlay;
+      document.querySelectorAll('#overlayToggle .toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+      renderImageAndOverlay();
+    });
+  });
+
+  document.querySelectorAll('#beforeAfterToggle .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.currentBeforeAfter = btn.dataset.which;
+      document.querySelectorAll('#beforeAfterToggle .toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+      renderImageAndOverlay();
+    });
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', downloadReport);
+});
+</script>
+</body>
+</html>
