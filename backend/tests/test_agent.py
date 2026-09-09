@@ -202,7 +202,15 @@ async def test_queue_bounds_concurrent_inference_calls():
     active = 0
     max_active = 0
 
-    async def tracked_run_inference(task, tiles, model_hint=None):
+    async def tracked_run_inference(
+    task,
+    tiles,
+    model_hint=None,
+    *,
+    query=None,
+    image_modalities=None,
+    image_order=None,
+):
         nonlocal active, max_active
         active += 1
         max_active = max(max_active, active)
@@ -230,7 +238,15 @@ async def test_queue_bounds_concurrent_inference_calls():
 
 
 async def test_queue_isolates_job_failures():
-    async def failing_run_inference(task, tiles, model_hint=None):
+    async def failing_run_inference(
+    task,
+    tiles,
+    model_hint=None,
+    *,
+    query=None,
+    image_modalities=None,
+    image_order=None,
+):
         raise RuntimeError("simulated GPU OOM")
 
     queue = JobQueue(funcs=make_funcs(run_inference=failing_run_inference), max_concurrent_inference=1)

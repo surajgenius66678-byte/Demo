@@ -110,7 +110,13 @@ async def mock_check_coregistration(image_a_id: str, image_b_id: str) -> Coregis
 
 
 async def mock_run_inference(
-    task: TaskType, tiles: list[Tile], model_hint: Optional[str] = None
+    task: TaskType,
+    tiles: list[Tile],
+    model_hint: Optional[str] = None,
+    *,
+    query: Optional[str] = None,
+    image_modalities: Optional[dict[str, Modality]] = None,
+    image_order: Optional[list[str]] = None,
 ) -> Evidence:
     await asyncio.sleep(_LATENCY["infer"])
     image_ids = {t.image_id for t in tiles}

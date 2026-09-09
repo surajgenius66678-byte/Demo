@@ -145,8 +145,24 @@ upload_sessions = UploadSessionStore(CHUNK_DIR)
 _configure_inference_engine(use_mock=True)
 
 
-async def _run_inference_async(task, tiles, model_hint=None):
-    return await asyncio.to_thread(_real_run_inference, task, tiles, model_hint)
+async def _run_inference_async(
+    task,
+    tiles,
+    model_hint=None,
+    *,
+    query=None,
+    image_modalities=None,
+    image_order=None,
+):
+    return await asyncio.to_thread(
+        _real_run_inference,
+        task,
+        tiles,
+        model_hint,
+        query=query,
+        image_modalities=image_modalities,
+        image_order=image_order,
+    )
 
 
 async def _validate_and_respond_async(query, evidence):
