@@ -368,7 +368,7 @@ For the session that receives all six finished parts:
 1. Place each part's code into the repo structure below.
 2. Diff each part's public functions against Section 3's exact signatures and Section 4's schema. Where a builder drifted (renamed a field, slightly different signature), reconcile with a thin adapter shim — don't rewrite the part.
 3. In Part 2, swap the mock `validate_and_prepare` / `tile_image` / `check_coregistration` / `run_inference` / `validate_and_respond` calls for the real imports. If everyone built against the same contract, this is close to a one-line change per call site.
-4. Point Part 4's registry config at Part 6's real `checkpoint_path` if training finished; otherwise leave it on a pretrained-only fallback entry (Part 4 should already support this per its own hardening list).
+4. Point Part 4's registry config at Part 6's real `checkpoint_path` for the remote-sensing-adapted VLM. A pretrained-only model may be used temporarily for development, debugging, or GPU-unavailable fallback, but the final SIH demonstration must include at least one visual/VLM component adapted using BigEarthNet.txt or another permitted open-source remote-sensing training dataset.
 5. Bring the whole thing up with one `docker-compose up`, then run the smoke test below.
 6. Re-run the P0 checklist from `satquery-failure-mode-audit.md` as the integration acceptance test.
 
