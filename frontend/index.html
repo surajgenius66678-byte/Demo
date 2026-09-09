@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SatQuery AI</title>
+<script>
+  // Runs before CSS/paint so the page never flashes the wrong theme on load.
+  (function () {
+    var t = 'dark';
+    try { t = localStorage.getItem('satquery-theme') || 'dark'; } catch (e) {}
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -25,21 +33,44 @@
     --amber-bg: rgba(224,165,61,0.12);
     --red: #ef5a52;
     --red-bg: rgba(239,90,82,0.12);
+    --img-bg: #05070b;
     --radius: 12px;
     --radius-sm: 7px;
     --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
     --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
+
+  html[data-theme="light"] {
+    --bg: #fcfcfb;
+    --panel: #ffffff;
+    --panel-alt: #f6f5f2;
+    --border: #e2e0d8;
+    --border-light: #cfccc1;
+    --ink: #232320;
+    --ink-muted: #77746c;
+    --ink-dim: #a8a59a;
+    --accent-soft: rgba(59,130,246,0.10);
+    --green: #1f8a5a;
+    --green-bg: rgba(31,138,90,0.10);
+    --amber: #b5791c;
+    --amber-bg: rgba(181,121,28,0.10);
+    --red: #c73f3f;
+    --red-bg: rgba(199,63,63,0.10);
+    --img-bg: #f6f5f2;
+  }
+
   * { box-sizing: border-box; }
   body {
     margin: 0;
+    transition: background-color .15s ease, color .15s ease;
     font-family: var(--sans);
     background: var(--bg);
     color: var(--ink);
     line-height: 1.5;
   }
   .app { max-width: 1360px; margin: 0 auto; padding: 20px 24px 40px; }
- 
+
   /* ---------- Topbar ---------- */
   .topbar {
     display: flex; align-items: center; gap: 14px;
@@ -70,13 +101,47 @@
     cursor: pointer; font-size: 15px;
   }
   .icon-btn:hover { border-color: var(--border-light); color: var(--ink); }
- 
+
+  .dropdown { position: relative; }
+  .dropdown-menu {
+    position: absolute; top: calc(100% + 8px); right: 0; min-width: 210px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); display: none; z-index: 50;
+  }
+  .dropdown-menu.open { display: block; }
+  .dropdown-section-label {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-muted); padding: 8px 10px 4px;
+  }
+  .dropdown-item {
+    padding: 9px 10px; border-radius: 6px; font-size: 13px; color: var(--ink);
+    cursor: default; display: flex; align-items: center; gap: 8px;
+  }
+  .dropdown-item:hover { background: var(--panel-alt); }
+  .dropdown-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 10px; border-radius: 6px; font-size: 13px; color: var(--ink);
+  }
+  .dropdown-divider { height: 1px; background: var(--border); margin: 6px 4px; }
+
+  .switch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider {
+    position: absolute; inset: 0; background-color: var(--border-light); transition: .2s; border-radius: 999px; cursor: pointer;
+  }
+  .switch .slider::before {
+    content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
+    background-color: #fff; transition: .2s; border-radius: 50%;
+  }
+  .switch input:checked + .slider { background-color: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(16px); }
+
   /* ---------- Layout ---------- */
   .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
   @media (max-width: 880px) { .main-grid { grid-template-columns: 1fr; } }
   .main-grid > .panel { height: 640px; display: flex; flex-direction: column; }
   @media (max-width: 880px) { .main-grid > .panel { height: 480px; } }
- 
+
   .panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 20px; margin-bottom: 18px;
@@ -91,7 +156,7 @@
   .panel-head h2 { font-family: var(--mono); font-size: 15px; font-weight: 600; margin: 0 0 2px; }
   .panel-head p { margin: 0; color: var(--ink-muted); font-size: 12.5px; }
   .panel-head-actions { margin-left: auto; align-self: center; }
- 
+
   /* ---------- Buttons ---------- */
   .btn {
     font: inherit; font-family: var(--mono); font-size: 12.5px; font-weight: 600;
@@ -105,7 +170,7 @@
     font-family: var(--mono); font-size: 12.5px; padding: 7px 13px; border-radius: 7px; cursor: pointer;
   }
   .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
- 
+
   /* ---------- Upload panel ---------- */
   .dropzone {
     border: 1.5px dashed var(--border-light); border-radius: var(--radius-sm);
@@ -120,21 +185,21 @@
   .dropzone-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
   .dropzone-sub { font-size: 12px; color: var(--ink-muted); margin-bottom: 14px; }
   .dropzone-hint { font-size: 11px; color: var(--ink-dim); margin-top: 10px; font-family: var(--mono); }
- 
+
   .staged-head {
     display: flex; justify-content: space-between; align-items: center;
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--ink-muted);
     text-transform: uppercase; margin-bottom: 10px; flex-shrink: 0;
   }
   .staged-head .status-ok { color: var(--green); }
- 
+
   #imageSlots {
     flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; margin-right: -4px;
   }
   #imageSlots::-webkit-scrollbar, .output-body::-webkit-scrollbar { width: 8px; }
   #imageSlots::-webkit-scrollbar-thumb, .output-body::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
   #imageSlots::-webkit-scrollbar-track, .output-body::-webkit-scrollbar-track { background: transparent; }
- 
+
   .image-slot {
     background: var(--panel-alt); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: 12px; margin-bottom: 10px;
@@ -171,7 +236,7 @@
     background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(224,165,61,0.3);
     border-radius: 6px; padding: 8px 10px; font-size: 11.5px; margin-top: 10px;
   }
- 
+
   /* ---------- Output panel ---------- */
   .output-toolbar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; flex-shrink: 0; }
   .toggle-btn {
@@ -181,7 +246,7 @@
   .toggle-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .toolbar-sep { width: 1px; background: var(--border); margin: 2px 4px; }
- 
+
   .output-body {
     flex: 1; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius-sm);
     background: var(--panel-alt); position: relative; overflow-y: auto; overflow-x: hidden;
@@ -191,9 +256,9 @@
   .empty-output-icon { font-size: 30px; color: var(--ink-dim); margin-bottom: 14px; }
   .empty-output h3 { color: var(--ink); font-size: 15px; margin: 0 0 6px; }
   .empty-output p { font-size: 12.5px; margin: 0; }
- 
+
   .image-display { position: relative; width: 100%; height: 100%; }
-  .image-display img { width: 100%; height: 100%; object-fit: contain; background: #05070b; display: block; }
+  .image-display img { width: 100%; height: 100%; object-fit: contain; background: var(--img-bg); display: block; }
   .no-preview {
     display: flex; align-items: center; justify-content: center; height: 100%;
     color: var(--ink-muted); font-size: 12.5px; text-align: center; padding: 16px;
@@ -211,7 +276,7 @@
     font-family: var(--mono); font-size: 10px; padding: 1px 5px; border-radius: 3px; white-space: nowrap; font-weight: 600;
   }
   .change-overlay { position: absolute; inset: 0; background: rgba(59,130,246,0.32); pointer-events: none; }
- 
+
   /* ---------- Query panel ---------- */
   .examples-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
   .examples-label { font-family: var(--mono); font-size: 11px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.03em; }
@@ -220,11 +285,11 @@
     background: var(--panel-alt); color: var(--ink-muted); cursor: pointer;
   }
   .example-chip:hover { border-color: var(--accent); color: var(--accent); }
- 
+
   .query-row { display: flex; gap: 10px; }
   .query-row input[type="text"] { flex: 1; padding: 12px 14px; font-size: 13.5px; }
   .query-row .btn { padding: 0 20px; }
- 
+
   .status-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-muted); margin-top: 12px; }
   .spinner {
     width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
@@ -240,7 +305,7 @@
     display: flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 12.5px;
     background: var(--panel-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 14px;
   }
- 
+
   .result-box { margin-top: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-alt); padding: 16px; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; font-family: var(--mono); letter-spacing: 0.02em; }
   .badge-high { background: var(--green-bg); color: var(--green); }
@@ -248,7 +313,7 @@
   .badge-low  { background: var(--red-bg); color: var(--red); }
   .answer-text { margin: 10px 0; font-size: 14px; max-width: 68ch; }
   .stats-list { font-family: var(--mono); font-size: 12.5px; color: var(--ink-muted); margin: 10px 0; display: flex; flex-direction: column; gap: 3px; }
- 
+
   .trace-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--ink-muted); text-transform: uppercase; margin: 16px 0 8px; }
   .trace-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
   .trace-list li { display: flex; align-items: center; gap: 8px; padding: 5px 0; color: var(--ink-muted); }
@@ -256,10 +321,10 @@
   .trace-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-light); flex-shrink: 0; }
   .trace-list li.done .trace-dot { background: var(--green); }
   .trace-time { margin-left: auto; font-size: 11px; font-family: var(--mono); }
- 
+
   .toolbar { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
   footer { text-align: center; color: var(--ink-dim); font-size: 11px; margin-top: 26px; font-family: var(--mono); }
- 
+
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
@@ -267,7 +332,7 @@
 </head>
 <body>
 <div class="app">
- 
+
   <div class="topbar">
     <div class="logo-mark">S</div>
     <div class="brand-name">SatQuery<span class="dim">.AI</span></div>
@@ -275,12 +340,38 @@
       <span class="conn-dot pulse"></span><span id="connText">Connecting...</span>
     </div>
     <div class="topbar-spacer"></div>
-    <div class="icon-btn" title="Docs">&#128196;</div>
-    <div class="icon-btn" title="Settings">&#9881;</div>
+
+    <div class="dropdown" id="themeDropdown">
+      <button class="icon-btn" id="themeMenuBtn" type="button" title="Theme">&#9788;</button>
+      <div class="dropdown-menu" id="themeMenu">
+        <div class="dropdown-section-label">Appearance</div>
+        <div class="dropdown-row">
+          <span>Dark mode</span>
+          <label class="switch">
+            <input type="checkbox" id="themeToggleInput">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item">Accent color</div>
+        <div class="dropdown-item">Display density</div>
+      </div>
+    </div>
+
+    <div class="dropdown" id="profileDropdown">
+      <button class="icon-btn" id="profileMenuBtn" type="button" title="Profile">&#128100;</button>
+      <div class="dropdown-menu" id="profileMenu">
+        <div class="dropdown-section-label">Guest User</div>
+        <div class="dropdown-item">My Profile</div>
+        <div class="dropdown-item">Account Settings</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item">Sign Out</div>
+      </div>
+    </div>
   </div>
- 
+
   <div class="main-grid">
- 
+
     <!-- LEFT: Upload -->
     <section class="panel">
       <div class="panel-head">
@@ -293,7 +384,7 @@
           <button class="btn" id="addSlotBtn" type="button">+ Add Image</button>
         </div>
       </div>
- 
+
       <div class="dropzone" id="dropzone">
         <div class="dropzone-icon">&#9650;</div>
         <div class="dropzone-title">Drag &amp; drop imagery files or browse</div>
@@ -302,14 +393,14 @@
         <input type="file" id="hiddenFileInput" accept=".tif,.tiff,.geotiff,.png,.jpg,.jpeg,.safe" style="display:none;">
         <div class="dropzone-hint">Backend currently accepts .tif / .tiff / .geotiff only</div>
       </div>
- 
+
       <div class="staged-head">
         <span id="stagedCountLabel">STAGED IMAGE INPUTS (0)</span>
         <span id="stagedStatusLabel"></span>
       </div>
       <div id="imageSlots"></div>
     </section>
- 
+
     <!-- RIGHT: Output -->
     <section class="panel">
       <div class="panel-head">
@@ -319,7 +410,7 @@
           <p>Spatial detections, overlays, and change masks</p>
         </div>
       </div>
- 
+
       <div class="output-toolbar">
         <button class="toggle-btn active" data-view="single" type="button">&#9635; Single</button>
         <button class="toggle-btn" data-view="split" type="button">&#9638; Split</button>
@@ -330,7 +421,7 @@
         <div class="toolbar-sep"></div>
         <button class="toggle-btn" id="exportBtn" type="button" disabled>&#8681; Export</button>
       </div>
- 
+
       <div class="output-body" id="outputBody">
         <div class="empty-output">
           <div class="empty-output-icon">&#128444;</div>
@@ -340,7 +431,7 @@
       </div>
     </section>
   </div>
- 
+
   <!-- Query -->
   <section class="panel">
     <div class="panel-head">
@@ -350,52 +441,52 @@
         <p>Ask questions across your loaded images</p>
       </div>
     </div>
- 
+
     <div class="examples-row">
       <span class="examples-label">Examples:</span>
       <button class="example-chip" type="button">Where are the buildings?</button>
       <button class="example-chip" type="button">What changed between these two images?</button>
       <button class="example-chip" type="button">Detect all vessels and maritime activity</button>
     </div>
- 
+
     <div class="query-row">
       <input type="text" id="queryInput" placeholder="e.g. Where are the buildings? / What changed between these two images?">
       <button class="btn" id="analyzeBtn" disabled type="button">&#9654; Analyze</button>
     </div>
- 
+
     <div class="status-row" id="statusRow" style="display:none;">
       <div class="spinner"></div>
       <span id="statusText"></span>
     </div>
     <div id="errorBanner" class="error-banner" style="display:none;"></div>
- 
+
     <div class="info-banner" id="infoBanner">
       &#8505;&#65039; AI response and attribution insights will appear here after analysis.
     </div>
- 
+
     <div class="result-box" id="resultsPanel" style="display:none;">
       <div id="confidenceBadge"></div>
       <p class="answer-text" id="answerText"></p>
- 
+
       <div class="toolbar" id="beforeAfterToggle" style="display:none;">
         <button class="toggle-btn active" data-which="A" type="button">Before</button>
         <button class="toggle-btn" data-which="B" type="button">After</button>
       </div>
- 
+
       <div id="statsList" class="stats-list"></div>
- 
+
       <div class="trace-head">Execution trace</div>
       <ul class="trace-list" id="traceList"></ul>
- 
+
       <div class="toolbar">
         <button class="btn-outline" id="downloadBtn" type="button">&#8681; Download report</button>
       </div>
     </div>
   </section>
- 
+
   <footer>SatQuery AI &mdash; ask questions about satellite imagery in plain language.</footer>
 </div>
- 
+
 <script>
 // ---------------------------------------------------------------------------
 // CONFIG
@@ -405,7 +496,7 @@ const CONFIG = {
   BASE_URL: 'http://localhost:8000'
 };
 const BACKEND_ACCEPTED_EXTENSIONS = ['.tif', '.tiff', '.geotiff']; // matches current backend validation
- 
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -424,7 +515,7 @@ const state = {
 let slotCounter = 0;
 const mockImages = {};
 const mockJobs = {};
- 
+
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 function randId(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 10); }
 function formatBytes(bytes) {
@@ -436,7 +527,7 @@ function hasAcceptedExtension(filename) {
   const lower = filename.toLowerCase();
   return BACKEND_ACCEPTED_EXTENSIONS.some(ext => lower.endsWith(ext));
 }
- 
+
 // ---------------------------------------------------------------------------
 // API layer — matches architecture.md Section 4 in both branches.
 // ---------------------------------------------------------------------------
@@ -462,7 +553,7 @@ async function apiUpload(file, modality, timestamp) {
   mockImages[meta.image_id] = meta;
   return meta;
 }
- 
+
 async function apiQuery(query, imageIds) {
   if (CONFIG.MODE === 'real') {
     const res = await fetch(CONFIG.BASE_URL + '/api/query', {
@@ -482,7 +573,7 @@ async function apiQuery(query, imageIds) {
   setTimeout(() => stepMockJob(job_id), 500);
   return { job_id };
 }
- 
+
 function stepMockJob(job_id) {
   const job = mockJobs[job_id];
   if (!job) return;
@@ -496,7 +587,7 @@ function stepMockJob(job_id) {
     job.result = buildMockResult(job);
   }
 }
- 
+
 async function apiGetJob(job_id) {
   if (CONFIG.MODE === 'real') {
     const res = await fetch(CONFIG.BASE_URL + '/api/jobs/' + job_id);
@@ -507,7 +598,7 @@ async function apiGetJob(job_id) {
   if (!job) return { status: 'failed', progress: [], result: null, error: 'Job not found' };
   return { status: job.status, progress: job.progress, result: job.result, error: null };
 }
- 
+
 async function apiGetTrace(job_id) {
   if (CONFIG.MODE === 'real') {
     const res = await fetch(CONFIG.BASE_URL + '/api/jobs/' + job_id + '/trace');
@@ -522,7 +613,7 @@ async function apiGetTrace(job_id) {
   }));
   return { steps };
 }
- 
+
 // ---------------------------------------------------------------------------
 // Mock intent classification + evidence generation (demo-only convenience)
 // ---------------------------------------------------------------------------
@@ -536,16 +627,16 @@ function classifyMockIntent(query, isMulti) {
   if (/find|where|locate|show me/.test(q)) return 'GROUNDING';
   return 'SINGLE_IMAGE_VQA';
 }
- 
+
 function confidenceFromScore(score) {
   const band = score >= 0.8 ? 'HIGH' : score >= 0.55 ? 'MEDIUM' : 'LOW';
   return { value: Math.round(score * 100) / 100, band, basis: 'mock specialist-model score' };
 }
- 
+
 function buildMockResult(job) {
   const task = job.task;
   const primaryMeta = mockImages[job.imageIds[0]] || { width: 1024, height: 768 };
- 
+
   if (task === 'UNSUPPORTED') {
     const conf = { value: null, band: 'LOW', basis: 'no applicable specialist model' };
     return {
@@ -556,7 +647,7 @@ function buildMockResult(job) {
       abstain_reason: 'Query does not match a supported analysis task.'
     };
   }
- 
+
   if (task === 'GROUNDING') {
     const labels = ['building', 'road segment', 'vegetation patch'];
     const count = 2 + Math.floor(Math.random() * 2);
@@ -582,7 +673,7 @@ function buildMockResult(job) {
       abstained: false, abstain_reason: null
     };
   }
- 
+
   if (task === 'CHANGE_DETECTION' || task === 'CHANGE_VQA') {
     const before = 18 + Math.random() * 10;
     const after = before + (Math.random() * 12 - 3);
@@ -606,7 +697,7 @@ function buildMockResult(job) {
       abstained: false, abstain_reason: null
     };
   }
- 
+
   const conf = confidenceFromScore(0.55 + Math.random() * 0.35);
   const answer = 'The scene shows a mix of built-up areas, vegetation, and open land, consistent with a semi-urban region.';
   return {
@@ -616,7 +707,7 @@ function buildMockResult(job) {
     abstained: false, abstain_reason: null
   };
 }
- 
+
 // ---------------------------------------------------------------------------
 // Client-side preview
 // ---------------------------------------------------------------------------
@@ -624,7 +715,21 @@ function isBrowserRenderable(file) {
   return /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name) ||
     (file.type && file.type.startsWith('image/') && file.type !== 'image/tiff');
 }
- 
+
+async function fetchServerThumbnail(imageId) {
+  // Only the real backend can generate this — mock mode has no file on disk
+  // to read, so it keeps using the dimensions-only placeholder as before.
+  if (CONFIG.MODE !== 'real') return null;
+  try {
+    const res = await fetch(CONFIG.BASE_URL + '/api/images/' + imageId + '/thumbnail');
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    return null;
+  }
+}
+
 function getImageDimensions(file) {
   return new Promise((resolve) => {
     if (!isBrowserRenderable(file)) { resolve({ width: 1024, height: 768, previewUrl: null }); return; }
@@ -635,7 +740,7 @@ function getImageDimensions(file) {
     img.src = url;
   });
 }
- 
+
 // ---------------------------------------------------------------------------
 // Image slots
 // ---------------------------------------------------------------------------
@@ -643,7 +748,7 @@ function createSlot() {
   const slotId = 'slot' + (++slotCounter);
   state.slots[slotId] = { meta: null, previewUrl: null, file: null };
   state.slotOrder.push(slotId);
- 
+
   const wrap = document.createElement('div');
   wrap.className = 'image-slot';
   wrap.id = slotId;
@@ -663,13 +768,13 @@ function createSlot() {
     '<div class="progress-bar" data-role="progress"><div class="progress-bar-fill"></div></div>' +
     '<div data-role="preview"></div>';
   document.getElementById('imageSlots').appendChild(wrap);
- 
+
   wrap.querySelector('[data-role="remove"]').addEventListener('click', () => removeSlot(slotId));
- 
+
   updateStagedHeader();
   return slotId;
 }
- 
+
 function removeSlot(slotId) {
   const el = document.getElementById(slotId);
   if (el) el.remove();
@@ -682,7 +787,7 @@ function removeSlot(slotId) {
   updateStagedHeader();
   updateAnalyzeButtonState();
 }
- 
+
 function updateStagedHeader() {
   const n = state.slotOrder.length;
   document.getElementById('stagedCountLabel').textContent = 'STAGED IMAGE INPUTS (' + n + ')';
@@ -690,48 +795,57 @@ function updateStagedHeader() {
   document.getElementById('stagedStatusLabel').textContent = readyCount > 0 ? 'Ready for analysis' : '';
   document.getElementById('addSlotBtn').disabled = n >= 2;
   updateDropzoneVisibility();
+  updateOutputToolbarState();
 }
- 
+
 function updateDropzoneVisibility() {
   const dropzone = document.getElementById('dropzone');
   const hasEmptySlot = state.slotOrder.length === 0 ||
     state.slotOrder.some(id => state.slots[id] && !state.slots[id].meta);
   dropzone.classList.toggle('dz-hidden', !hasEmptySlot);
 }
- 
+
 async function assignFileToSlot(slotId, file) {
   const wrap = document.getElementById(slotId);
   if (!wrap || !file) return;
- 
+
   wrap.querySelector('[data-role="filename"]').textContent = file.name;
   wrap.querySelector('[data-role="filesize"]').textContent = file.size ? '(' + formatBytes(file.size) + ')' : '';
   const previewWrap = wrap.querySelector('[data-role="preview"]');
   previewWrap.innerHTML = '';
- 
+
   if (!hasAcceptedExtension(file.name)) {
     previewWrap.innerHTML = '<div class="file-warning">Heads up: this file type may be rejected by the backend, which currently expects .tif / .tiff / .geotiff.</div>';
   }
- 
+
   const modality = wrap.querySelector('[data-role="modality"]').value;
   const timestampRaw = wrap.querySelector('[data-role="timestamp"]').value;
   const timestamp = timestampRaw ? new Date(timestampRaw).toISOString() : null;
- 
+
   const progressBar = wrap.querySelector('[data-role="progress"]');
   const progressFill = progressBar.querySelector('.progress-bar-fill');
   progressBar.style.display = 'block';
   progressFill.style.width = '0%';
- 
+
   const localPreview = await getImageDimensions(file);
- 
+
   try {
     const meta = await apiUpload(file, modality, timestamp);
     requestAnimationFrame(() => { progressFill.style.width = '100%'; });
     if (state.slots[slotId] && state.slots[slotId].previewUrl) {
       URL.revokeObjectURL(state.slots[slotId].previewUrl);
     }
-    state.slots[slotId] = { meta, previewUrl: localPreview.previewUrl, file };
-    if (localPreview.previewUrl) {
-      previewWrap.insertAdjacentHTML('beforeend', '<img class="thumb" src="' + localPreview.previewUrl + '">');
+
+    let previewUrl = localPreview.previewUrl;
+    if (!previewUrl) {
+      // Browser can't render this file type itself (e.g. GeoTIFF) — ask the
+      // backend for a generated preview instead of falling straight to text.
+      previewUrl = await fetchServerThumbnail(meta.image_id);
+    }
+
+    state.slots[slotId] = { meta, previewUrl, file };
+    if (previewUrl) {
+      previewWrap.insertAdjacentHTML('beforeend', '<img class="thumb" src="' + previewUrl + '">');
     } else if (hasAcceptedExtension(file.name)) {
       previewWrap.insertAdjacentHTML('beforeend', '<div class="file-placeholder">' + file.name + ' uploaded (' + meta.width + '&times;' + meta.height +
         'px). Preview isn\'t available for this file type yet.</div>');
@@ -746,7 +860,7 @@ async function assignFileToSlot(slotId, file) {
     updateAnalyzeButtonState();
   }
 }
- 
+
 function ensureSlotForFile() {
   // Reuse the first empty slot if there is one, else create a new one (up to 2).
   const emptySlotId = state.slotOrder.find(id => state.slots[id] && !state.slots[id].meta);
@@ -754,13 +868,13 @@ function ensureSlotForFile() {
   if (state.slotOrder.length < 2) return createSlot();
   return null;
 }
- 
+
 function updateAnalyzeButtonState() {
   const query = document.getElementById('queryInput').value.trim();
   const hasImage = state.slotOrder.some(id => state.slots[id] && state.slots[id].meta);
   document.getElementById('analyzeBtn').disabled = !(query && hasImage);
 }
- 
+
 // ---------------------------------------------------------------------------
 // Analyze / poll / render
 // ---------------------------------------------------------------------------
@@ -771,14 +885,14 @@ async function handleAnalyze() {
     .filter(Boolean);
   if (!query || imageIds.length === 0) return;
   state.lastQueryImageCount = imageIds.length;
- 
+
   document.getElementById('errorBanner').style.display = 'none';
   document.getElementById('analyzeBtn').disabled = true;
   document.getElementById('statusRow').style.display = 'flex';
   document.getElementById('statusText').textContent = 'Submitting...';
   document.getElementById('resultsPanel').style.display = 'none';
   document.getElementById('infoBanner').style.display = 'flex';
- 
+
   try {
     const { job_id } = await apiQuery(query, imageIds);
     state.currentJobId = job_id;
@@ -789,7 +903,7 @@ async function handleAnalyze() {
     document.getElementById('statusRow').style.display = 'none';
   }
 }
- 
+
 function pollJob(job_id) {
   clearTimeout(state.pollTimer);
   const tick = async () => {
@@ -804,7 +918,7 @@ function pollJob(job_id) {
       const lastStage = jobState.progress[jobState.progress.length - 1];
       document.getElementById('statusText').textContent =
         jobState.status === 'queued' ? 'Queued...' : ('Running: ' + (lastStage || '...'));
- 
+
       if (jobState.status === 'done') {
         document.getElementById('statusRow').style.display = 'none';
         document.getElementById('analyzeBtn').disabled = false;
@@ -823,26 +937,26 @@ function pollJob(job_id) {
   };
   tick();
 }
- 
+
 function showError(msg) {
   const el = document.getElementById('errorBanner');
   el.textContent = msg;
   el.style.display = 'block';
 }
- 
+
 function getSlotMeta(index) {
   const slotId = state.slotOrder[index];
   if (!slotId) return null;
   return state.slots[slotId];
 }
- 
+
 function renderOutputEmpty() {
   document.getElementById('outputBody').innerHTML =
     '<div class="empty-output"><div class="empty-output-icon">&#128444;</div>' +
     '<h3>No Analysis Run Yet</h3>' +
     '<p>Image analysis and visual detection output will appear here once analyzed. Submit a query below to start.</p></div>';
 }
- 
+
 function buildOverlayHTML(slot, result) {
   if (!result || state.currentOverlay === 'none' || !slot || !slot.meta) return '';
   let html = '';
@@ -859,7 +973,7 @@ function buildOverlayHTML(slot, result) {
   }
   return html;
 }
- 
+
 function renderPaneContent(slot) {
   if (!slot || !slot.meta) {
     return '<div class="no-preview">Upload an image to see it here.</div>';
@@ -869,11 +983,49 @@ function renderPaneContent(slot) {
   }
   return '<div class="no-preview">No inline preview for this file type (' + slot.meta.width + '\u00d7' + slot.meta.height + 'px).</div>';
 }
- 
+
+function updateOutputToolbarState() {
+  const stagedCount = state.slotOrder.filter(id => state.slots[id] && state.slots[id].meta).length;
+  const result = state.lastResult;
+
+  const splitBtn = document.querySelector('[data-view="split"]');
+  const boxesBtn = document.querySelector('[data-overlay="boxes"]');
+  const changeBtn = document.querySelector('[data-overlay="change"]');
+
+  const canSplit = stagedCount >= 2;
+  splitBtn.disabled = !canSplit;
+  splitBtn.title = canSplit ? '' : 'Upload a second image to use split view';
+
+  const canBoxes = !!(result && result.evidence.detections && result.evidence.detections.length > 0);
+  boxesBtn.disabled = !canBoxes;
+  boxesBtn.title = canBoxes ? '' : 'Run a query that returns detections (e.g. "where are the buildings?") to use this view';
+
+  const canChange = !!(result && result.evidence.change_map);
+  changeBtn.disabled = !canChange;
+  changeBtn.title = canChange ? '' : 'Run a two-image "what changed" query to see the change map';
+
+  // If the mode/overlay currently shown just became invalid (e.g. an image
+  // was removed, or a new result has no detections), fall back to the
+  // default instead of leaving a disabled option looking "stuck" as active.
+  if (!canSplit && state.viewMode === 'split') setActiveView('single');
+  if (!canBoxes && state.currentOverlay === 'boxes') setActiveOverlay('none');
+  if (!canChange && state.currentOverlay === 'change') setActiveOverlay('none');
+}
+
+function setActiveView(view) {
+  state.viewMode = view;
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+}
+
+function setActiveOverlay(overlay) {
+  state.currentOverlay = overlay;
+  document.querySelectorAll('[data-overlay]').forEach(b => b.classList.toggle('active', b.dataset.overlay === overlay));
+}
+
 function renderImageAndOverlay() {
   const container = document.getElementById('outputBody');
   const result = state.lastResult;
- 
+
   if (state.viewMode === 'split' && state.slotOrder.length >= 2) {
     const slotA = getSlotMeta(0), slotB = getSlotMeta(1);
     container.innerHTML =
@@ -883,46 +1035,47 @@ function renderImageAndOverlay() {
       '</div>';
     return;
   }
- 
+
   const idx = state.currentBeforeAfter === 'A' ? 0 : 1;
   let slot = getSlotMeta(idx);
   if (!slot || !slot.meta) slot = getSlotMeta(0);
- 
+
   if (!slot || !slot.meta) { renderOutputEmpty(); return; }
- 
+
   container.innerHTML = '<div class="image-display">' + renderPaneContent(slot) + buildOverlayHTML(slot, result) + '</div>';
 }
- 
+
 function renderResults(result) {
   state.lastResult = result;
   state.currentOverlay = 'none';
   state.currentBeforeAfter = 'A';
   document.querySelectorAll('[data-overlay]').forEach(b => b.classList.toggle('active', b.dataset.overlay === 'none'));
   document.querySelectorAll('#beforeAfterToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.which === 'A'));
- 
+  updateOutputToolbarState();
+
   document.getElementById('infoBanner').style.display = 'none';
   document.getElementById('resultsPanel').style.display = 'block';
   document.getElementById('answerText').textContent = result.answer_text;
   document.getElementById('exportBtn').disabled = false;
- 
+
   const band = result.confidence.band;
   const badgeClass = band === 'HIGH' ? 'badge-high' : band === 'MEDIUM' ? 'badge-med' : 'badge-low';
   const badge = document.getElementById('confidenceBadge');
   badge.innerHTML = '<span class="badge ' + badgeClass + '">' + band + ' confidence</span>' +
     (result.abstained ? ' <span style="color:var(--ink-muted);font-size:12px;">&mdash; ' + result.abstain_reason + '</span>' : '');
- 
+
   document.getElementById('beforeAfterToggle').style.display = (state.lastQueryImageCount >= 2 && state.viewMode === 'single') ? 'flex' : 'none';
- 
+
   const statsEl = document.getElementById('statsList');
   const stats = result.evidence.stats || {};
   const statKeys = Object.keys(stats);
   statsEl.innerHTML = statKeys.length
     ? statKeys.map(k => '<div>' + k.replace(/_/g, ' ') + ': ' + (typeof stats[k] === 'number' ? stats[k].toFixed(1) : stats[k]) + '</div>').join('')
     : '';
- 
+
   renderImageAndOverlay();
 }
- 
+
 function renderTrace(trace) {
   const list = document.getElementById('traceList');
   list.innerHTML = trace.steps.map(s =>
@@ -930,7 +1083,7 @@ function renderTrace(trace) {
     '<span class="trace-time">' + (s.status === 'done' ? s.duration_ms + 'ms' : '...') + '</span></li>'
   ).join('');
 }
- 
+
 function downloadReport() {
   const result = state.lastResult;
   if (!result) return;
@@ -959,11 +1112,41 @@ function downloadReport() {
   a.remove();
   URL.revokeObjectURL(url);
 }
- 
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
+  // ---- Theme toggle ----
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('themeToggleInput').checked = (theme === 'dark');
+    try { localStorage.setItem('satquery-theme', theme); } catch (e) {}
+  }
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+
+  document.getElementById('themeToggleInput').addEventListener('change', (e) => {
+    applyTheme(e.target.checked ? 'dark' : 'light');
+  });
+
+  // ---- Dropdown menus (profile + theme) ----
+  const menus = [
+    { btn: document.getElementById('themeMenuBtn'), menu: document.getElementById('themeMenu') },
+    { btn: document.getElementById('profileMenuBtn'), menu: document.getElementById('profileMenu') }
+  ];
+  menus.forEach(({ btn, menu }) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = !menu.classList.contains('open');
+      menus.forEach(m => m.menu.classList.remove('open'));
+      if (willOpen) menu.classList.add('open');
+    });
+    menu.addEventListener('click', (e) => e.stopPropagation());
+  });
+  document.addEventListener('click', () => {
+    menus.forEach(m => m.menu.classList.remove('open'));
+  });
+
   const connPill = document.getElementById('connPill');
   const connText = document.getElementById('connText');
   const connDot = connPill.querySelector('.conn-dot');
@@ -975,14 +1158,14 @@ document.addEventListener('DOMContentLoaded', () => {
     connDot.classList.remove('pulse');
     connText.textContent = 'Connected to backend at ' + CONFIG.BASE_URL;
   }
- 
+
   createSlot();
- 
+
   document.getElementById('addSlotBtn').addEventListener('click', () => {
     if (state.slotOrder.length >= 2) return;
     createSlot();
   });
- 
+
   // Browse / hidden file input
   const hiddenInput = document.getElementById('hiddenFileInput');
   document.getElementById('browseBtn').addEventListener('click', () => hiddenInput.click());
@@ -993,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (slotId) assignFileToSlot(slotId, file);
     hiddenInput.value = '';
   });
- 
+
   // Drag & drop
   const dropzone = document.getElementById('dropzone');
   ['dragenter', 'dragover'].forEach(evt => {
@@ -1008,13 +1191,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const slotId = ensureSlotForFile();
     if (slotId) assignFileToSlot(slotId, file);
   });
- 
+
   document.getElementById('queryInput').addEventListener('input', updateAnalyzeButtonState);
   document.getElementById('queryInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !document.getElementById('analyzeBtn').disabled) handleAnalyze();
   });
   document.getElementById('analyzeBtn').addEventListener('click', handleAnalyze);
- 
+
   document.querySelectorAll('.example-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const input = document.getElementById('queryInput');
@@ -1023,7 +1206,7 @@ document.addEventListener('DOMContentLoaded', () => {
       input.focus();
     });
   });
- 
+
   document.querySelectorAll('[data-overlay]').forEach(btn => {
     btn.addEventListener('click', () => {
       state.currentOverlay = btn.dataset.overlay;
@@ -1031,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderImageAndOverlay();
     });
   });
- 
+
   document.querySelectorAll('[data-view]').forEach(btn => {
     btn.addEventListener('click', () => {
       state.viewMode = btn.dataset.view;
@@ -1043,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
- 
+
   document.querySelectorAll('#beforeAfterToggle .toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.currentBeforeAfter = btn.dataset.which;
@@ -1051,11 +1234,10 @@ document.addEventListener('DOMContentLoaded', () => {
       renderImageAndOverlay();
     });
   });
- 
+
   document.getElementById('downloadBtn').addEventListener('click', downloadReport);
   document.getElementById('exportBtn').addEventListener('click', downloadReport);
 });
 </script>
 </body>
 </html>
- 

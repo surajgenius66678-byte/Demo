@@ -1,0 +1,20 @@
+{
+  "band_count": 1,
+  "bounds": [
+    0.0,
+    256.0,
+    256.0,
+    0.0
+  ],
+  "cog_path": "E:\\DSA\\SatQuery\\SetQuery\\backend\\data\\images\\0c6840bb556459e9324c75a6c82450e5f4ab2b2412a4cde28ef4b97e41da74f8\\cog.tif",
+  "crs": null,
+  "dtype": "uint16",
+  "height": 256,
+  "image_id": "0c6840bb556459e9324c75a6c82450e5f4ab2b2412a4cde28ef4b97e41da74f8",
+  "is_valid": true,
+  "modality": "OPTICAL",
+  "resolution_m": 1.0,
+  "timestamp": null,
+  "validation_errors": [],
+  "width": 256
+}

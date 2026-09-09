@@ -68,7 +68,7 @@ import asyncio
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from shared.schemas import Modality
@@ -102,6 +102,7 @@ from backend.preprocessing import (
 )
 from backend.preprocessing import check_coregistration as _real_check_coregistration
 from backend.preprocessing import tile_image as _real_tile_image
+from backend.preprocessing import generate_thumbnail as _real_generate_thumbnail
 
 app = FastAPI(title="SatQuery AI — Backend Core (Part 2)")
 
@@ -170,6 +171,10 @@ async def _tile_image_async(image_id, task, tile_size=1024, overlap_pct=0.15):
     return await asyncio.to_thread(_real_tile_image, image_id, task, tile_size, overlap_pct)
 
 
+async def _generate_thumbnail_async(cog_path, max_size=512):
+    return await asyncio.to_thread(_real_generate_thumbnail, cog_path, max_size)
+
+
 async def _check_coregistration_async(image_a_id, image_b_id):
     return await asyncio.to_thread(_real_check_coregistration, image_a_id, image_b_id)
 
@@ -231,6 +236,27 @@ async def upload_image(
     return metadata.model_dump()
 
 
+@app.get("/api/images/{image_id}/thumbnail")
+async def get_thumbnail(image_id: str, max_size: int = 512):
+    """
+    Added post-merge: the frontend (Part 1) can't inline-render GeoTIFF in
+    the browser, so it was falling back to a dimensions-only placeholder
+    (see frontend/README.md "Known limitation"). This generates a small PNG
+    preview server-side from the already-validated COG on disk instead.
+
+    Not cached — see preprocessing/thumbnail.py's module docstring for why,
+    and what to do if this ever needs to be.
+    """
+    meta = image_store.get(image_id)
+    if meta is None:
+        raise HTTPException(404, f"unknown image_id: {image_id}")
+    try:
+        png_bytes = await _generate_thumbnail_async(meta.cog_path, max_size)
+    except Exception as e:
+        raise HTTPException(500, f"thumbnail generation failed: {e}")
+    return Response(content=png_bytes, media_type="image/png")
+
+
 @app.post("/api/query")
 async def submit_query(payload: QueryRequest):
     images = []
@@ -274,3 +300,4 @@ async def get_models():
 @app.get("/api/health")
 async def health():
     return await _health_check_async()
+ 

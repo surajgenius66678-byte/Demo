@@ -1,0 +1,17 @@
+{
+  "affine_transform": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0
+  ],
+  "array_path": "E:\\DSA\\SatQuery\\SetQuery\\backend\\data\\images\\c007458b924f332dd0ff32869ff30d06af27595c3cb716afd4203435bc2c6216\\tiles\\e4d2229add7d49e2.tif",
+  "col_off": 0,
+  "height": 256,
+  "image_id": "c007458b924f332dd0ff32869ff30d06af27595c3cb716afd4203435bc2c6216",
+  "row_off": 0,
+  "tile_id": "e4d2229add7d49e2",
+  "width": 256
+}
