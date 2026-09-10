@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
-from shared.schemas import TaskType
+from shared.schemas import Evidence, TaskType
 
 
 @dataclass
@@ -13,8 +13,15 @@ class PlannedTask:
     specialist: str
     image_ids: list[str] = field(default_factory=list)
     depends_on: list[str] = field(default_factory=list)
-    parameters: dict = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
+
+@dataclass
+class TaskExecution:
+    task_id: str
+    evidence: Evidence
+    input_task_ids: list[str] = field(default_factory=list)
+    input_evidence: list[Evidence] = field(default_factory=list)
 
 @dataclass
 class AgentPlan:

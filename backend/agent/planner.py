@@ -26,7 +26,7 @@ from shared.schemas import (
     Tile,
 )
 from agent.trace import Trace
-from agent.contracts import AgentPlan, PlannedTask
+from agent.contracts import AgentPlan, PlannedTask , TaskExecution
 from agent.evidence import EvidenceAggregator
 
 # ---------------------------------------------------------------------------
@@ -73,18 +73,6 @@ class Part345Functions:
     validate_and_respond: ValidateRespondFn
 
 
-# ---------------------------------------------------------------------------
-# Runtime execution result
-# ---------------------------------------------------------------------------
-
-@dataclass
-class TaskExecution:
-    """
-    Runtime result produced by one planned specialist task.
-    """
-
-    task_id: str
-    evidence: Evidence
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +459,32 @@ class Planner:
                 img.image_id
                 for img in images
             ]
+            # ---------------------------------------------------------------
+            # 3d. Resolve upstream task evidence
+            # ---------------------------------------------------------------
 
+            execution_by_id = {
+                execution.task_id: execution
+                for execution in executions
+            }
+
+            upstream_executions: list[TaskExecution] = []
+
+            for dependency_id in planned_task.depends_on:
+                dependency = execution_by_id.get(dependency_id)
+
+                if dependency is None:
+                    raise RuntimeError(
+                        f"task {planned_task.task_id} depends on "
+                        f"unfinished task {dependency_id}"
+                    )
+
+                upstream_executions.append(dependency)
+
+            upstream_evidence = [
+                execution.evidence
+                for execution in upstream_executions
+            ]
             # ---------------------------------------------------------------
             # 3d. Execute specialist inference
             # ---------------------------------------------------------------
@@ -486,6 +499,7 @@ class Planner:
                         query=query,
                         image_modalities=image_modalities,
                         image_order=image_order,
+                        upstream_evidence=upstream_evidence,
                     )
 
             # ---------------------------------------------------------------
@@ -496,6 +510,10 @@ class Planner:
                 TaskExecution(
                     task_id=planned_task.task_id,
                     evidence=evidence,
+                    input_task_ids=[
+                        execution.task_id
+                        for execution in upstream_executions
+                    ],
                 )
             )
 

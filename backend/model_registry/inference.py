@@ -33,12 +33,24 @@ logger = logging.getLogger("satquery.model_registry.inference")
 
 
 class _CallContext:
-    __slots__ = ("query", "image_modalities", "image_order")
+    __slots__ = (
+        "query",
+        "image_modalities",
+        "image_order",
+        "upstream_evidence",
+    )
 
-    def __init__(self, query, image_modalities, image_order):
+    def __init__(
+        self,
+        query,
+        image_modalities,
+        image_order,
+        upstream_evidence=None,
+    ):
         self.query = query
         self.image_modalities = image_modalities
         self.image_order = image_order
+        self.upstream_evidence = upstream_evidence or []
 
 
 _ADAPTER_FOR_TASK: dict[TaskType, Callable[[_CallContext], BaseAdapter]] = {
@@ -189,6 +201,7 @@ class InferenceEngine:
         query: str | None = None,
         image_modalities: dict[str, Modality] | None = None,
         image_order: list[str] | None = None,
+        upstream_evidence: list[Evidence] | None = None,
     ) -> Evidence:
         if task not in _ADAPTER_FOR_TASK:
             raise ValueError(
@@ -197,7 +210,7 @@ class InferenceEngine:
         if not tiles:
             raise ValueError("run_inference requires at least one tile.")
 
-        ctx = _CallContext(query, image_modalities, image_order)
+        ctx = _CallContext(query, image_modalities, image_order ,upstream_evidence,)
         adapter = _ADAPTER_FOR_TASK[task](ctx)
         entry = select_model(
             self.registry, task,

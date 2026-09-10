@@ -117,6 +117,7 @@ async def mock_run_inference(
     query: Optional[str] = None,
     image_modalities: Optional[dict[str, Modality]] = None,
     image_order: Optional[list[str]] = None,
+    upstream_evidence: Optional[list[Evidence]] = None,
 ) -> Evidence:
     await asyncio.sleep(_LATENCY["infer"])
     image_ids = {t.image_id for t in tiles}

@@ -169,6 +169,7 @@ async def test_planner_passes_aggregated_evidence_to_part5():
         query=None,
         image_modalities=None,
         image_order=None,
+        upstream_evidence=None,
     ):
         if task == TaskType.SINGLE_IMAGE_VQA:
             return Evidence(
@@ -292,6 +293,7 @@ async def test_queue_bounds_concurrent_inference_calls():
     query=None,
     image_modalities=None,
     image_order=None,
+    upstream_evidence=None,
 ):
         nonlocal active, max_active
         active += 1
@@ -328,6 +330,7 @@ async def test_queue_isolates_job_failures():
     query=None,
     image_modalities=None,
     image_order=None,
+    upstream_evidence=None,
 ):
         raise RuntimeError("simulated GPU OOM")
 
