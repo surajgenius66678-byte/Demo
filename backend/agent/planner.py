@@ -4,10 +4,10 @@ currently planned tasks.
 
 The planner first builds an explicit AgentPlan. The execution layer then
 walks through every PlannedTask, executes its specialist, stores the
-resulting Evidence, and finally passes the primary evidence to Part 5.
+resulting Evidence, and finally passes the aggregated evidence to Part 5.
 
-This is the transition point from the original single-task planner toward
-the final multi-specialist evidence aggregation architecture.
+The planner validates cross-image requirements before specialist inference
+and preserves upstream evidence between dependent tasks.
 """
 
 from __future__ import annotations
@@ -25,15 +25,17 @@ from shared.schemas import (
     TaskType,
     Tile,
 )
-from agent.trace import Trace
-from agent.contracts import AgentPlan, PlannedTask , TaskExecution
+
+from agent.contracts import AgentPlan, PlannedTask, TaskExecution
 from agent.evidence import EvidenceAggregator
+from agent.trace import Trace
+
 
 # ---------------------------------------------------------------------------
 # Cross-image tasks
 # ---------------------------------------------------------------------------
 
-# Tasks that require two images to be spatially aligned before inference.
+# Tasks that require exactly two spatially compatible images.
 _CROSS_IMAGE_TASKS = (
     TaskType.CHANGE_DETECTION,
     TaskType.CHANGE_VQA,
@@ -73,8 +75,6 @@ class Part345Functions:
     validate_and_respond: ValidateRespondFn
 
 
-
-
 # ---------------------------------------------------------------------------
 # Special responses
 # ---------------------------------------------------------------------------
@@ -110,7 +110,7 @@ def _refusal_evidence(
     reason: str,
 ) -> Evidence:
     """
-    Build Evidence for a co-registration refusal.
+    Build Evidence for a cross-image validation refusal.
     """
 
     return Evidence(
@@ -120,9 +120,34 @@ def _refusal_evidence(
         confidence=Confidence(
             value=None,
             band="LOW",
-            basis="co-registration check failed",
+            basis="cross-image validation failed",
         ),
-        warnings=[f"co-registration refusal: {reason}"],
+        warnings=[f"cross-image refusal: {reason}"],
+    )
+
+
+def _refusal_response(
+    evidence: Evidence,
+    reason: str,
+) -> FinalResponse:
+    """
+    Build a deterministic abstaining response for planner validation
+    failures.
+
+    Planner-level refusals must not be passed through Part 5 because the
+    normal response generator may treat the refusal Evidence as valid
+    analysis evidence and return abstained=False.
+    """
+
+    return FinalResponse(
+        answer_text=(
+            "I can't perform this analysis because "
+            f"{reason}"
+        ),
+        confidence=evidence.confidence,
+        evidence=evidence,
+        abstained=True,
+        abstain_reason=reason,
     )
 
 
@@ -143,12 +168,13 @@ def build_plan(
     image modalities indicate that extra evidence is required.
 
     Current planning signals:
+
     - spatial language -> GROUNDING
     - temporal/change language + 2 images -> CHANGE_DETECTION
     - optical + SAR pair -> OPTICAL_SAR_FUSION
 
-    This remains deterministic for now. A semantic/LLM planner can later
-    replace this decomposition without changing the execution contract.
+    Planning remains deterministic for now so that the execution trace is
+    predictable and auditable.
     """
 
     image_ids = [
@@ -212,11 +238,6 @@ def build_plan(
     # -------------------------------------------------------------------
     # Image modality signals
     # -------------------------------------------------------------------
-
-    modalities = {
-        image.modality
-        for image in images
-    }
 
     has_optical = any(
         image.modality.value == "OPTICAL"
@@ -283,29 +304,28 @@ def build_plan(
     # -------------------------------------------------------------------
     # Additional spatial specialist
     # -------------------------------------------------------------------
-    # -----------------------------------------------------------------------
 
     if (
         needs_grounding
         and task != TaskType.GROUNDING
         and len(images) >= 1
     ):
+        grounding_dependency = next(
+            (
+                planned_task.task_id
+                for planned_task in tasks
+                if planned_task.task_type == TaskType.CHANGE_DETECTION
+            ),
+            "task_1",
+        )
+
         tasks.append(
             PlannedTask(
                 task_id=f"task_{len(tasks) + 1}",
                 task_type=TaskType.GROUNDING,
                 specialist="grounding",
                 image_ids=image_ids,
-                depends_on=[
-                    next(
-                        (
-                            planned_task.task_id
-                            for planned_task in tasks
-                            if planned_task.task_type == TaskType.CHANGE_DETECTION
-                        ),
-                        "task_1",
-                    )
-                ],
+                depends_on=[grounding_dependency],
                 parameters={
                     "reason": "spatial evidence requested",
                 },
@@ -318,6 +338,7 @@ def build_plan(
         final_strategy="aggregate_and_verify",
         confidence=None,
     )
+
 
 # ---------------------------------------------------------------------------
 # Planner
@@ -336,33 +357,29 @@ class Planner:
         """
         Execute every task in the AgentPlan.
 
-        Current execution model:
+        Execution flow:
 
             User query
                  ↓
             AgentPlan
                  ↓
-            PlannedTask 1
+            PlannedTask
+                 ↓
+            Part 3
+                 ↓
+            Part 4
                  ↓
               Evidence
                  ↓
-            PlannedTask 2
-                 ↓
-              Evidence
+            Evidence aggregation
                  ↓
             Part 5
                  ↓
             FinalResponse
-
-        The execution context is intentionally kept local for now.
-
-        Later we will introduce a proper evidence aggregation layer so that
-        outputs from multiple specialists can be combined and verified
-        before the final response is generated.
         """
 
         # -------------------------------------------------------------------
-        # 1. Build the explicit agent plan
+        # 1. Build explicit agent plan
         # -------------------------------------------------------------------
 
         plan = build_plan(
@@ -390,13 +407,39 @@ class Planner:
         for planned_task in plan.tasks:
 
             # ---------------------------------------------------------------
-            # 3a. Cross-image compatibility / co-registration gate
+            # 3a. Cross-image validation / co-registration gate
             # ---------------------------------------------------------------
 
-            if (
-                planned_task.task_type in _CROSS_IMAGE_TASKS
-                and len(images) == 2
-            ):
+            if planned_task.task_type in _CROSS_IMAGE_TASKS:
+
+                # SIH requirement:
+                # cross-image tasks require exactly two images.
+                if len(images) != 2:
+                    reason = (
+                        f"{planned_task.task_type.value} requires exactly "
+                        f"2 images, but received {len(images)}."
+                    )
+
+                    evidence = _refusal_evidence(
+                        planned_task.task_type,
+                        images,
+                        reason,
+                    )
+
+                    executions.append(
+                        TaskExecution(
+                            task_id=planned_task.task_id,
+                            evidence=evidence,
+                        )
+                    )
+
+                    return _refusal_response(
+                        evidence,
+                        reason,
+                    )
+
+                # Two images are present, so verify spatial compatibility
+                # before running the specialist model.
                 async with trace.stage(
                     "coregistration_check"
                 ):
@@ -406,10 +449,12 @@ class Planner:
                     )
 
                 if not coreg.aligned:
+                    reason = coreg.reason or "offset too large"
+
                     evidence = _refusal_evidence(
                         planned_task.task_type,
                         images,
-                        coreg.reason or "offset too large",
+                        reason,
                     )
 
                     executions.append(
@@ -422,9 +467,9 @@ class Planner:
                     async with trace.stage(
                         "response_generation"
                     ):
-                        return await funcs.validate_and_respond(
-                            query,
+                        return _refusal_response(
                             evidence,
+                            reason,
                         )
 
             # ---------------------------------------------------------------
@@ -459,6 +504,7 @@ class Planner:
                 img.image_id
                 for img in images
             ]
+
             # ---------------------------------------------------------------
             # 3d. Resolve upstream task evidence
             # ---------------------------------------------------------------
@@ -479,14 +525,17 @@ class Planner:
                         f"unfinished task {dependency_id}"
                     )
 
-                upstream_executions.append(dependency)
+                upstream_executions.append(
+                    dependency
+                )
 
             upstream_evidence = [
                 execution.evidence
                 for execution in upstream_executions
             ]
+
             # ---------------------------------------------------------------
-            # 3d. Execute specialist inference
+            # 3e. Execute specialist inference
             # ---------------------------------------------------------------
 
             async with trace.stage(
@@ -503,7 +552,7 @@ class Planner:
                     )
 
             # ---------------------------------------------------------------
-            # 3e. Store specialist evidence
+            # 3f. Store specialist evidence
             # ---------------------------------------------------------------
 
             executions.append(
@@ -527,7 +576,6 @@ class Planner:
                 "the planner produced no executable analysis task"
             )
 
-
         # -------------------------------------------------------------------
         # 5. Aggregate specialist evidence
         # -------------------------------------------------------------------
@@ -539,7 +587,9 @@ class Planner:
 
         aggregator = EvidenceAggregator()
 
-        async with trace.stage("evidence_aggregation"):
+        async with trace.stage(
+            "evidence_aggregation"
+        ):
             aggregated_evidence = aggregator.aggregate(
                 evidence_objects
             )
