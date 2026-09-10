@@ -459,7 +459,7 @@ class ModelLoader:
         registry: list[ModelRegistryEntry],
         vram_budget_mb: float = 8192.0,
         model_factory: ModelFactory = default_model_factory,
-        device: str = "cuda",
+        device: str |None=None,
     ):
         self.registry: dict[str, ModelRegistryEntry] = {
             entry.name: entry
@@ -468,7 +468,14 @@ class ModelLoader:
 
         self.vram_budget_mb = vram_budget_mb
         self._model_factory = model_factory
-        self.device = device
+        if device is not None:
+            self.device = device
+        else:
+            try:
+                import torch
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            except (ImportError , OSError):
+                self.device = "cpu"
         self._resident: dict[str, LoadedModel] = {}
         self._access_counter = 0
 
