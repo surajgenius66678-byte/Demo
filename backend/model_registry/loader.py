@@ -114,7 +114,7 @@ class LoadedModel:
     handle: Any
     quantization: str
     vram_mb: float
-    last_used: float = field(default_factory=time.monotonic)
+    last_used: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -470,6 +470,7 @@ class ModelLoader:
         self._model_factory = model_factory
         self.device = device
         self._resident: dict[str, LoadedModel] = {}
+        self._access_counter = 0
 
     # ------------------------------------------------------------------
     # Public API
@@ -492,7 +493,8 @@ class ModelLoader:
                 quantization_override is None
                 or cached.quantization == quantization_override
             ):
-                cached.last_used = time.monotonic()
+                self._access_counter += 1
+                cached.last_used = self._access_counter
                 return cached.handle
 
             # Quantization changed; reload.
@@ -605,7 +607,7 @@ class ModelLoader:
                 vram_mb,
                 self.vram_budget_mb,
             )
-
+        self._access_counter += 1
         loaded = LoadedModel(
             entry=entry,
             handle=handle,
@@ -614,6 +616,7 @@ class ModelLoader:
                 or entry.quantization
             ),
             vram_mb=vram_mb,
+            last_used=self._access_counter,
         )
 
         self._resident[entry.name] = loaded

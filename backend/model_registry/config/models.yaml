@@ -11,8 +11,8 @@ models:
     version: "0.1.0"
     tasks: [SINGLE_IMAGE_VQA, CAPTIONING]
     modalities: [OPTICAL, SAR]
-    checkpoint_path: checkpoints/vlm/satquery-vlm-base
-    quantization: "4bit"
+    checkpoint_path: AdaptLLM/remote-sensing-Qwen2-VL-2B-Instruct
+    quantization: "none"
     requires_coregistration: false
     max_input_px: 1024
 
