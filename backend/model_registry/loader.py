@@ -2,19 +2,16 @@
 Part 4 — model loader.
 
 Owns lazy GPU loading, LRU eviction under a VRAM budget, and quantized
-loading (Section 3.4 hardening: "Lazy load + LRU evict — never every model
-resident simultaneously by default"). Model construction itself is
-delegated to a `model_factory` callable, so this file has zero hard
-dependency on torch/transformers. That keeps the eviction/budget logic
-unit-testable with a fake factory, and keeps this module importable in
-environments where torch isn't installed yet — e.g. building Part 4 before
-Part 6 has produced real checkpoints.
+loading. Model construction is delegated to a model factory so SatQuery is
+not coupled to one checkpoint or parameter count.
 """
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from backend.model_registry.exceptions import ModelLoadError
@@ -23,8 +20,6 @@ from backend.shared.schemas import ModelRegistryEntry
 logger = logging.getLogger("satquery.model_registry.loader")
 
 # (entry, device, quantization_override) -> loaded model handle.
-# quantization_override lets run_inference's OOM ladder force a lighter
-# load on retry without needing a second registry entry for the same model.
 ModelFactory = Callable[[ModelRegistryEntry, str, Optional[str]], Any]
 
 
@@ -37,42 +32,169 @@ class LoadedModel:
     last_used: float = field(default_factory=time.monotonic)
 
 
+class _HuggingFaceVLMHandle:
+    """Small, model-family-neutral HF VLM handle used by VLMAdapter.
+
+    The rest of SatQuery only sees ``generate(image_path, prompt)``. The
+    checkpoint can therefore be changed without changing Part 2, the API,
+    evidence, or the VLM adapter. Architecture-specific logic stays inside
+    this handle and is selected from the checkpoint config when possible.
+    """
+
+    def __init__(self, model: Any, processor: Any, device: str):
+        self.model = model
+        self.processor = processor
+        self.device = device
+        self.vram_mb = 0.0
+
+    def generate(self, image_path: str, prompt: str) -> dict[str, Any]:
+        try:
+            from PIL import Image
+        except ImportError as exc:
+            raise ModelLoadError("Pillow is required for Hugging Face VLM inference.") from exc
+
+        image = Image.open(Path(image_path)).convert("RGB")
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": image},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+
+        # Modern Transformers processors for multimodal causal LMs expose
+        # apply_chat_template. Keep all checkpoint-specific preprocessing
+        # behind this interface.
+        try:
+            inputs = self.processor.apply_chat_template(
+                messages,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_dict=True,
+                return_tensors="pt",
+            )
+        except TypeError:
+            # Older Qwen2-VL releases use qwen-vl-utils for vision packing.
+            try:
+                from qwen_vl_utils import process_vision_info
+            except ImportError as exc:
+                raise ModelLoadError(
+                    "This VLM processor needs qwen-vl-utils. Install it or use a "
+                    "checkpoint compatible with the installed Transformers version."
+                ) from exc
+            text = self.processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            image_inputs, video_inputs = process_vision_info(messages)
+            inputs = self.processor(
+                text=[text],
+                images=image_inputs,
+                videos=video_inputs,
+                padding=True,
+                return_tensors="pt",
+            )
+
+        if hasattr(inputs, "to"):
+            inputs = inputs.to(self.device)
+
+        generated = self.model.generate(**inputs, max_new_tokens=128)
+        input_ids = getattr(inputs, "input_ids", None)
+        if input_ids is not None:
+            generated = generated[:, input_ids.shape[-1] :]
+        text = self.processor.batch_decode(
+            generated,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        )[0].strip()
+        return {"text": text}
+
+    def close(self) -> None:
+        del self.model
+        del self.processor
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+
+
+def _load_huggingface_vlm(entry: ModelRegistryEntry, device: str, quantization_override: str | None) -> Any:
+    """Load any compatible HF image-text-to-text checkpoint.
+
+    No model ID is hard-coded here. ``entry.checkpoint_path`` is the seam for
+    the final 2B/3B/7B model or the friend's fine-tuned checkpoint.
+    """
+    try:
+        import torch
+        from transformers import AutoProcessor
+    except ImportError as exc:
+        raise ModelLoadError(
+            "Hugging Face VLM loading requires torch and transformers."
+        ) from exc
+
+    checkpoint = os.getenv("SATQUERY_VLM_CHECKPOINT") or entry.checkpoint_path
+    if not checkpoint or checkpoint.startswith("checkpoints/"):
+        raise ModelLoadError(
+            f"No real VLM checkpoint configured for '{entry.name}'. "
+            "Set checkpoint_path to a Hugging Face/local checkpoint or "
+            "SATQUERY_VLM_CHECKPOINT."
+        )
+
+    try:
+        # AutoModelForImageTextToText is the preferred generic entry point in
+        # current Transformers. Fall back to Qwen2VL explicitly for older
+        # Transformers releases because Qwen2-VL is a common SatQuery VLM.
+        try:
+            from transformers import AutoModelForImageTextToText
+            model_cls = AutoModelForImageTextToText
+        except ImportError:
+            from transformers import Qwen2VLForConditionalGeneration
+            model_cls = Qwen2VLForConditionalGeneration
+
+        quant = quantization_override or entry.quantization
+        kwargs: dict[str, Any] = {"device_map": "auto"}
+        if quant == "4bit":
+            kwargs["load_in_4bit"] = True
+            kwargs["torch_dtype"] = torch.bfloat16
+        elif quant == "8bit":
+            kwargs["load_in_8bit"] = True
+            kwargs["torch_dtype"] = torch.bfloat16
+        else:
+            kwargs["torch_dtype"] = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+
+        model = model_cls.from_pretrained(checkpoint, **kwargs)
+        processor = AutoProcessor.from_pretrained(checkpoint)
+        return _HuggingFaceVLMHandle(model, processor, device)
+    except Exception as exc:
+        raise ModelLoadError(
+            f"Failed to load VLM checkpoint '{checkpoint}': {exc}"
+        ) from exc
+
+
 def default_model_factory(entry: ModelRegistryEntry, device: str, quantization_override: str | None) -> Any:
-    """
-    Real loading path. Lazily imports torch so importing this module never
-    requires it. This is the seam Part 6's checkpoint format plugs into —
-    swap the body once Part 6 lands; ModelLoader's signature stays the same.
-    """
+    """Generic factory; model identity comes from registry/config, not code."""
     try:
         import torch  # noqa: F401
     except ImportError as exc:
         raise ModelLoadError(
-            f"Cannot load '{entry.name}': torch is not installed in this "
-            f"environment. Inject a custom model_factory, or use the mock "
-            f"engine (configure_engine(use_mock=True)) until a GPU box with "
-            f"requirements.txt installed is available."
+            f"Cannot load '{entry.name}': torch is not installed."
         ) from exc
 
-    # Placeholder body: real per-architecture loading (VLM / grounding /
-    # change-detection / fusion) dispatches from here once Part 6's
-    # checkpoint_metadata.json format is finalized (Section 3.6) and an
-    # actual base model is chosen. quantization_override (or entry.quantization
-    # if that's None) selects the load precision.
+    if any(task.value in {"SINGLE_IMAGE_VQA", "CAPTIONING"} for task in entry.tasks):
+        return _load_huggingface_vlm(entry, device, quantization_override)
+
     raise ModelLoadError(
-        f"default_model_factory has no real weights to load for "
-        f"'{entry.name}' in this environment (checkpoint_path="
-        f"{entry.checkpoint_path!r}). This is expected until Part 6 "
-        f"delivers a checkpoint at that path — use the mock engine "
-        f"until then."
+        f"No generic loader is registered for model '{entry.name}'. "
+        "Add a task-specific factory for this specialist without changing "
+        "the model registry or agent contracts."
     )
 
 
 class ModelLoader:
-    """
-    Lazy-loads models on first use, evicts least-recently-used models when
-    a new load would exceed `vram_budget_mb`, and never holds every model
-    resident at once by default.
-    """
+    """Lazy-load models with LRU eviction under a VRAM budget."""
 
     def __init__(
         self,
@@ -88,15 +210,11 @@ class ModelLoader:
         self._resident: dict[str, LoadedModel] = {}
 
     def get(self, model_name: str, quantization_override: str | None = None) -> Any:
-        """Return a ready-to-use model handle, loading (and evicting) as needed."""
         cached = self._resident.get(model_name)
         if cached is not None:
             if quantization_override is None or cached.quantization == quantization_override:
                 cached.last_used = time.monotonic()
                 return cached.handle
-            # Same model, different quant tier requested (OOM retry ladder) —
-            # drop the stale copy first so VRAM accounting never double-counts
-            # one model resident under two quant tiers at once.
             self.unload(model_name)
 
         if model_name not in self.registry:
@@ -107,7 +225,6 @@ class ModelLoader:
     def _load(self, entry: ModelRegistryEntry, quantization_override: str | None) -> LoadedModel:
         handle = self._model_factory(entry, self.device, quantization_override)
         vram_mb = float(getattr(handle, "vram_mb", 0.0)) or _estimate_vram_mb(entry, quantization_override)
-
         self._evict_lru_until_fits(vram_mb)
         if not self._resident and self.vram_used_mb() + vram_mb > self.vram_budget_mb:
             logger.warning(
@@ -157,7 +274,6 @@ class ModelLoader:
 
 
 def _estimate_vram_mb(entry: ModelRegistryEntry, quantization_override: str | None) -> float:
-    """Fallback footprint estimate when a factory doesn't report handle.vram_mb."""
     quant = quantization_override or entry.quantization
     base_mb = {"none": 6000.0, "8bit": 3200.0, "4bit": 1800.0}
     return base_mb.get(quant, 4000.0)
