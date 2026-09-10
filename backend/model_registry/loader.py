@@ -222,6 +222,10 @@ class _HuggingFaceVLMHandle:
             )
 
         if hasattr(inputs, "to"):
+            try:
+                model_device = next(self.model.parameters()).device
+            except (StopIteration, AttributeError):
+                model_device = self.device
             inputs = inputs.to(self.device)
 
         generated = self.model.generate(
