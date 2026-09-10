@@ -514,6 +514,7 @@ class Planner:
                         execution.task_id
                         for execution in upstream_executions
                     ],
+                    input_evidence=upstream_evidence,
                 )
             )
 

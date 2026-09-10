@@ -519,3 +519,56 @@ def test_build_plan_grounding_depends_on_change_detection():
 
     assert plan.tasks[1].task_id == "task_2"
     assert plan.tasks[2].depends_on == ["task_2"]
+
+def test_grounding_adapter_uses_upstream_evidence():
+    from backend.model_registry.adapters.grounding_adapter import GroundingAdapter
+    from backend.shared.schemas import (
+        Confidence,
+        Evidence,
+        Modality,
+        TaskType,
+    )
+
+    class FakeModel:
+        def __init__(self):
+            self.received_queries = []
+
+        def ground(self, image_path, query):
+            self.received_queries.append(query)
+            return []
+
+    upstream = Evidence(
+        task=TaskType.CHANGE_DETECTION,
+        model_used="change-model",
+        modality_used=[Modality.OPTICAL],
+        confidence=Confidence(
+            value=0.9,
+            band="HIGH",
+            basis="test",
+        ),
+        warnings=[],
+    )
+
+    adapter = GroundingAdapter(
+        query="locate the buildings that changed",
+        upstream_evidence=[upstream],
+    )
+
+    fake_model = FakeModel()
+
+    adapter.infer(
+        fake_model,
+        [
+            {
+                "tile": None,
+                "image_path": "fake-image.tif",
+            }
+        ],
+    )
+
+    assert len(fake_model.received_queries) == 1
+
+    received_query = fake_model.received_queries[0]
+
+    assert "locate the buildings that changed" in received_query
+    assert "Previous task: CHANGE_DETECTION" in received_query

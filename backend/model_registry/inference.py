@@ -56,8 +56,10 @@ class _CallContext:
 _ADAPTER_FOR_TASK: dict[TaskType, Callable[[_CallContext], BaseAdapter]] = {
     TaskType.SINGLE_IMAGE_VQA: lambda ctx: VLMAdapter(query=ctx.query),
     TaskType.CAPTIONING: lambda ctx: VLMAdapter(query=None),
-    TaskType.GROUNDING: lambda ctx: GroundingAdapter(query=ctx.query or ""),
-    TaskType.CHANGE_DETECTION: lambda ctx: ChangeDetectionAdapter(query=None, image_order=ctx.image_order),
+TaskType.GROUNDING: lambda ctx: GroundingAdapter(
+    query=ctx.query or "",
+    upstream_evidence=ctx.upstream_evidence,
+),    TaskType.CHANGE_DETECTION: lambda ctx: ChangeDetectionAdapter(query=None, image_order=ctx.image_order),
     TaskType.CHANGE_VQA: lambda ctx: ChangeDetectionAdapter(query=ctx.query, image_order=ctx.image_order),
     TaskType.OPTICAL_SAR_FUSION: lambda ctx: FusionAdapter(query=ctx.query, image_modalities=ctx.image_modalities),
 }
