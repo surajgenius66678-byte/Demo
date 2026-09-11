@@ -1,38 +1,68 @@
+from pathlib import Path
+
+import numpy as np
+import rasterio
 from fastapi.testclient import TestClient
 
-from backend.api.main import app, image_store
-from backend.shared.schemas import (
-    ImageMetadata,
-    Modality,
-)
+from backend.api.main import app
 
 
-def test_query_endpoint_creates_and_completes_job():
-    image = ImageMetadata(
-        image_id="api-test-image",
-        modality=Modality.OPTICAL,
-        crs="EPSG:4326",
-        bounds=[0.0, 0.0, 1.0, 1.0],
+def test_query_endpoint_creates_and_completes_job(tmp_path: Path):
+    # Create a small real GeoTIFF so the test exercises the
+    # real upload -> validation -> Part 3 storage pipeline.
+    tif_path = tmp_path / "api-test.tif"
+
+    data = np.zeros((3, 512, 512), dtype=np.uint8)
+
+    with rasterio.open(
+        tif_path,
+        "w",
+        driver="GTiff",
         width=512,
         height=512,
-        band_count=3,
+        count=3,
         dtype="uint8",
-        resolution_m=1.0,
-        timestamp=None,
-        cog_path="/fake/api-test.tif",
-        is_valid=True,
-        validation_errors=[],
-    )
-
-    image_store.put(image)
+        crs="EPSG:4326",
+        transform=rasterio.transform.from_origin(
+            0,
+            1,
+            1 / 512,
+            1 / 512,
+        ),
+    ) as dst:
+        dst.write(data)
 
     client = TestClient(app)
 
+    # Use the real API upload boundary.
+    upload_response = client.post(
+        "/api/upload",
+        files={
+            "file": (
+                "api-test.tif",
+                tif_path.read_bytes(),
+                "image/tiff",
+            )
+        },
+        data={
+            "modality": "OPTICAL",
+        },
+    )
+
+    assert upload_response.status_code == 200
+
+    image = upload_response.json()
+    assert image["is_valid"] is True
+    assert image["image_id"]
+
+    image_id = image["image_id"]
+
+    # Submit the query using the image returned by the real upload path.
     response = client.post(
         "/api/query",
         json={
             "query": "What is visible in this image?",
-            "image_ids": ["api-test-image"],
+            "image_ids": [image_id],
         },
     )
 
@@ -46,6 +76,7 @@ def test_query_endpoint_creates_and_completes_job():
     assert job_response.status_code == 200
 
     data = job_response.json()
+
     assert data["status"] in {"queued", "running", "done"}
 
     trace_response = client.get(f"/api/jobs/{job_id}/trace")

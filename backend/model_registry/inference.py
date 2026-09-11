@@ -77,6 +77,9 @@ def _ensure_specialist_factories() -> None:
         from backend.model_registry.specialists.change_detector_factory import (
             load_oscd_change_detector,
         )
+        from backend.model_registry.specialists.fusion_factory import (
+            load_croma_fusion_model,
+        )
 
         register_model_factory(
             "satquery-change-bitemporal",
@@ -85,6 +88,14 @@ def _ensure_specialist_factories() -> None:
 
         logger.info(
             "Registered built-in specialist factory: satquery-change-bitemporal"
+        )
+        register_model_factory(
+            "satquery-fusion",
+            load_croma_fusion_model,
+        )
+
+        logger.info(
+            "Registered built-in specialist factory: satquery-fusion"
         )
 
     except ImportError as exc:

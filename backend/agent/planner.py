@@ -483,7 +483,7 @@ class Planner:
             ):
                 for img in images:
                     all_tiles.extend(
-                        funcs.tile_image(
+                        await funcs.tile_image(
                             img.image_id,
                             planned_task.task_type,
                             1024,
@@ -601,7 +601,7 @@ class Planner:
         async with trace.stage(
             "response_generation"
         ):
-            return funcs.validate_and_respond(
+            return await funcs.validate_and_respond(
                 query,
                 aggregated_evidence,
             )
