@@ -14,3 +14,11 @@ training/runs/
 .pytest_cache/
 .mypy_cache/
 .vscode/
+
+.venv312/
+backend/data/images/
+
+# Large local model/data artifacts
+checkpoints/
+data/
+rsvqa_lora.zip

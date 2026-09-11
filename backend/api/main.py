@@ -142,11 +142,29 @@ upload_sessions = UploadSessionStore(CHUNK_DIR)
 # pretrained-only fallback entry"). Flip use_mock=False here once real
 # checkpoints land and this box has the GPU deps from
 # backend/model_registry's requirements installed.
-_configure_inference_engine(use_mock=True)
+_configure_inference_engine(use_mock=False)
 
 
-async def _run_inference_async(task, tiles, model_hint=None):
-    return await asyncio.to_thread(_real_run_inference, task, tiles, model_hint)
+async def _run_inference_async(
+    task,
+    tiles,
+    model_hint=None,
+    *,
+    query=None,
+    image_modalities=None,
+    image_order=None,
+    upstream_evidence=None,
+):
+    return await asyncio.to_thread(
+        _real_run_inference,
+        task,
+        tiles,
+        model_hint,
+        query=query,
+        image_modalities=image_modalities,
+        image_order=image_order,
+        upstream_evidence=upstream_evidence,
+    )
 
 
 async def _validate_and_respond_async(query, evidence):

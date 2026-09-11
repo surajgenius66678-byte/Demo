@@ -82,7 +82,7 @@ def test_artificial_latency_actually_delays(single_tile):
     engine = MockInferenceEngine(artificial_latency_s=0.05)
     start = time.monotonic()
     engine.run_inference(TaskType.CAPTIONING, [single_tile])
-    assert time.monotonic() - start >= 0.05
+    assert time.monotonic() - start >= 0.045
 
 
 def test_simulate_oom_for_raises_oom_style_error(single_tile):

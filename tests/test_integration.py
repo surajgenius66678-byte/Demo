@@ -20,7 +20,10 @@ Setup:
 """
 
 import os
-import resource
+try:
+    import resource
+except ImportError:
+    resource = None
 import sys
 
 import pytest
@@ -150,6 +153,8 @@ def _write_large_test_image_windowed(path: str, size: int, bands: int, block: in
 
 
 def test_tile_image_never_loads_full_array_into_memory(tmp_path):
+    if resource is None:
+        pytest.skip("Memory RSS check requires the Unix-only resource module.")
     size, bands = 8192, 4
     large_path = str(tmp_path / "large_optical.tif")
     _write_large_test_image_windowed(large_path, size=size, bands=bands)
