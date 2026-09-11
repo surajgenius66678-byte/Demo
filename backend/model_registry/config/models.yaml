@@ -30,7 +30,7 @@ models:
     tasks: [CHANGE_DETECTION, CHANGE_VQA]
     modalities: [OPTICAL]
     checkpoint_path: checkpoints/change/satquery-change-bitemporal
-    quantization: "8bit"
+    quantization: "none"
     requires_coregistration: true
     max_input_px: 1024
 
