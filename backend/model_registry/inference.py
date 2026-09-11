@@ -77,6 +77,9 @@ def _ensure_specialist_factories() -> None:
         from backend.model_registry.specialists.change_detector_factory import (
             load_oscd_change_detector,
         )
+        from backend.model_registry.specialists.grounding_factory import (
+            load_grounding_model,
+        )
         from backend.model_registry.specialists.fusion_factory import (
             load_croma_fusion_model,
         )

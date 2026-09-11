@@ -37,6 +37,8 @@ from typing import Any, Callable, Optional
 
 from backend.model_registry.exceptions import ModelLoadError
 from backend.shared.schemas import ModelRegistryEntry, TaskType
+from backend.model_registry.specialists.grounding_factory import load_grounding_model
+
 
 logger = logging.getLogger("satquery.model_registry.loader")
 
@@ -55,7 +57,7 @@ ModelFactory = Callable[
 # Explicit specialist factories registered by model name.
 #
 # Example later:
-#
+# #
 # register_model_factory(
 #     "satquery-grounding",
 #     load_grounding_model,
@@ -89,6 +91,11 @@ def register_model_factory(
         "Registered specialist model factory for '%s'.",
         model_name,
     )
+
+register_model_factory(
+    "satquery-grounding",
+    load_grounding_model,
+)
 
 
 def unregister_model_factory(model_name: str) -> None:
@@ -329,9 +336,13 @@ def _load_huggingface_vlm(
             or entry.quantization
         )
 
-        kwargs: dict[str, Any] = {
-            "device_map": "auto",
-        }
+        kwargs: dict[str, Any] = {}
+
+        if torch.cuda.is_available():
+            kwargs["device_map"] = "auto"
+        else:
+            kwargs["device_map"] = None
+            kwargs["low_cpu_mem_usage"] = False
 
         if quantization == "4bit":
             kwargs["load_in_4bit"] = True
@@ -352,6 +363,35 @@ def _load_huggingface_vlm(
             checkpoint,
             **kwargs,
         )
+
+        # Optional LoRA adapter for the remote-sensing-adapted VLM.
+        # The base model remains the registry/Hugging Face checkpoint;
+        # the adapter contains only the learned task/domain update.
+        lora_adapter = os.getenv("SATQUERY_VLM_LORA_ADAPTER")
+
+        if lora_adapter:
+            try:
+                from peft import PeftModel
+
+                logger.info(
+                    "Loading LoRA adapter from '%s'.",
+                    lora_adapter,
+                )
+
+                model = PeftModel.from_pretrained(
+                    model,
+                    lora_adapter,
+                )
+
+                logger.info(
+                    "LoRA adapter successfully attached to VLM."
+                )
+
+            except Exception as exc:
+                raise ModelLoadError(
+                    f"Failed to load LoRA adapter "
+                    f"'{lora_adapter}': {exc}"
+                ) from exc
 
         processor = AutoProcessor.from_pretrained(
             checkpoint,

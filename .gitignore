@@ -17,3 +17,8 @@ training/runs/
 
 .venv312/
 backend/data/images/
+
+# Large local model/data artifacts
+checkpoints/
+data/
+rsvqa_lora.zip
