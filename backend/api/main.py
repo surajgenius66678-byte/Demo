@@ -130,18 +130,10 @@ CHUNK_DIR.mkdir(parents=True, exist_ok=True)
 image_store = ImageStore()
 upload_sessions = UploadSessionStore(CHUNK_DIR)
 
-# --- Part 3/4/5 wiring (Section 3.2 Mocking strategy / Section 5 step 3) --
-# All five calls are real as of this merge (Part 3 landed last). Part 2's
-# own mocks in agent/mocks.py stay in the tree, unused on this call path,
-# for backend/tests/test_agent.py.
-#
-# Part 6 (Training) hasn't produced any real checkpoints yet — models.yaml's
-# checkpoint_path entries are still placeholders (see backend/model_registry/
-# config/models.yaml) — so Part 4's engine stays on its own mock inference
-# engine per Section 5 step 4's fallback branch ("otherwise leave it on a
-# pretrained-only fallback entry"). Flip use_mock=False here once real
-# checkpoints land and this box has the GPU deps from
-# backend/model_registry's requirements installed.
+# --- Production inference wiring ---
+# The live API uses the real model registry and inference engine.
+# The VLM base checkpoint is AdaptLLM's remote-sensing Qwen2-VL model,
+# with the locally trained 2K-sample LoRA adapter loaded by the model loader.
 _configure_inference_engine(use_mock=False)
 
 

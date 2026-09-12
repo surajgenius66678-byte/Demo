@@ -172,7 +172,56 @@ class _HuggingFaceVLMHandle:
                 "Pillow is required for Hugging Face VLM inference."
             ) from exc
 
-        image = Image.open(Path(image_path)).convert("RGB")
+        image_path_obj = Path(image_path)
+
+        if image_path_obj.suffix.lower() in {".tif", ".tiff", ".geotiff"}:
+            import numpy as np
+            import rasterio
+            from PIL import Image
+
+            from backend.preprocessing.normalize import normalize_optical
+
+            with rasterio.open(image_path_obj) as src:
+                bands = src.read()
+
+            if bands.shape[0] >= 3:
+                normalized = normalize_optical(bands)
+                rgb = normalized[:3]
+            elif bands.shape[0] == 1:
+                normalized = normalize_optical(bands)
+                rgb = np.repeat(normalized, 3, axis=0)
+            else:
+                raise ValueError(
+                    f"VLM requires at least 1 band, got {bands.shape[0]}"
+                )
+
+            rgb = np.transpose(rgb, (1, 2, 0))
+            rgb = (rgb * 255.0).clip(0, 255).astype(np.uint8)
+
+            image = Image.fromarray(rgb, mode="RGB")
+            import rasterio
+            import numpy as np
+            from PIL import Image
+
+            with rasterio.open(image_path_obj) as src:
+                bands = src.read()
+
+            if bands.shape[0] >= 3:
+                rgb = bands[:3]
+            elif bands.shape[0] == 1:
+                rgb = np.repeat(bands, 3, axis=0)
+            else:
+                raise ValueError(
+                    f"VLM requires at least 1 band, got {bands.shape[0]}"
+                )
+
+            rgb = np.transpose(rgb, (1, 2, 0))
+            rgb = np.clip(rgb, 0.0, 1.0)
+            rgb = (rgb * 255).astype(np.uint8)
+
+            image = Image.fromarray(rgb, mode="RGB")
+        else:
+            image = Image.open(image_path_obj).convert("RGB")
 
         messages = [
             {
@@ -367,8 +416,18 @@ def _load_huggingface_vlm(
         # Optional LoRA adapter for the remote-sensing-adapted VLM.
         # The base model remains the registry/Hugging Face checkpoint;
         # the adapter contains only the learned task/domain update.
-        lora_adapter = os.getenv("SATQUERY_VLM_LORA_ADAPTER")
+        lora_adapter = (
+            os.getenv("SATQUERY_VLM_LORA_ADAPTER")
+            or str(
+                Path(__file__).resolve().parents[2]
+                / "checkpoints"
+                / "rs_vlm_lora_2k"
+                / "adapter"
+            )
+        )
 
+        if not Path(lora_adapter).is_dir():
+            lora_adapter = None
         if lora_adapter:
             try:
                 from peft import PeftModel
